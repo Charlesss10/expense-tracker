@@ -23,7 +23,7 @@ cd expense-tracker
 Ensure you have MySQL installed on your system. You can download it from https://dev.mysql.com/downloads/installer/
 Create a new MySQL schema for the application. CREATE DATABASE expense_tracker;
 Navigate to the sql-queries folder in the repository and execute the provided SQL file to create the necessary tables: 
-![MySQL](expense_tracker/sql_queries/sql-queries.sql)
+[![MySQL](https://img.shields.io/badge/MySQL-%2300758F.svg?logo=mysql&logoColor=white)](expense_tracker/sql_queries/sql-queries.sql)
 
 3. Configure the environment variables:
 Set up the following environment variables with your MySQL credentials:
