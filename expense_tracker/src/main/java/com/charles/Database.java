@@ -6,7 +6,8 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Scanner;
+import java.util.ArrayList;
+import java.util.List;
 
 //Singleton database
 public class Database {
@@ -19,7 +20,9 @@ public class Database {
 		Class.forName("com.mysql.cj.jdbc.Driver");
 		String mysql_username = System.getenv("MYSQL_username");
 		String mysql_password = System.getenv("MYSQL_password");
-		con = DriverManager.getConnection("jdbc:mysql://localhost:3306/expense_tracker", mysql_username,
+		String mysql_hostname = System.getenv("MYSQL_hostname");
+		String mysql_schema = System.getenv("MYSQL_schema");
+		con = DriverManager.getConnection("jdbc:mysql://" + mysql_hostname + "/" + mysql_schema, mysql_username,
 				mysql_password);
 		System.out.println("Database Connection created.\n");
 
@@ -47,525 +50,362 @@ public class Database {
 		System.out.println("Database Connection closed.\n");
 	}
 
-	// Verify transaction
-	public boolean verifyTransaction(TransactionManager transaction) throws SQLException {
-		@SuppressWarnings("resource")
-		Scanner choice = new Scanner(System.in);
-		String type = transaction.getType();
-		int id = transaction.getTransactionId();
+	// Verify transaction from database
+	public boolean verifyTransaction(String transactionId, String type) throws SQLException {
 		ResultSet incomeSelectQuery, expensesSelectQuery;
 
-		while (true) {
-			switch (type) {
-				case "INCOME" -> {
-					incomeSelectQuery = stmt.executeQuery("select * from income where id = " + id);
-					if (incomeSelectQuery.next()) {
-						return true;
-					} else {
-						System.out.println("Invalid ID. Please enter a valid ID: ");
-						id = Integer.parseInt(choice.nextLine());
-						transaction.setTransactionId(id);
-					}
-					break;
-				}
-				case "EXPENSES" -> {
-					expensesSelectQuery = stmt.executeQuery("select * from expenses where id = " + id);
-					if (expensesSelectQuery.next()) {
-						return true;
-					} else {
-						System.out.println("Invalid ID. Please enter a valid ID: ");
-						id = Integer.parseInt(choice.nextLine());
-						transaction.setTransactionId(id);
-					}
-					break;
-				}
-			}
-		}
-	}
-
-	// Insert transaction into database
-	public void insertTransaction(TransactionManager transaction) throws SQLException {
-		@SuppressWarnings("resource")
-		Scanner choice = new Scanner(System.in);
-		String type = transaction.getType();
-		double amount = transaction.getAmount();
-		String source = transaction.getSource();
-		String category = transaction.getCategory();
-		Date date = transaction.getDate();
-
-		// Validate transaction type argument
-		while (!type.equalsIgnoreCase("INCOME") &&
-				!type.equalsIgnoreCase("EXPENSES")) {
-			System.out.println("Wrong type. Enter Income or Expenses: ");
-			type = choice.nextLine();
+		// Validate transaction type
+		if (!type.equalsIgnoreCase("INCOME") && !type.equalsIgnoreCase("EXPENSES")) {
+			System.out.println("Invalid type: " + type);
+			return false;
 		}
 		type = type.toUpperCase();
 
 		switch (type) {
 			case "INCOME" -> {
-				source = source.toUpperCase();
-				stmt.executeUpdate("insert into income(type, amount, source, transaction_date) values ('"
-						+ type + "','" + amount + "','" + source
-						+ "','" + date + "')");
+				incomeSelectQuery = stmt
+						.executeQuery("select * from income where transactionId = '" + transactionId + "'");
+				if (incomeSelectQuery.next()) {
+					return true;
+				}
 				break;
 			}
 			case "EXPENSES" -> {
-				category = category.toUpperCase();
-				stmt.executeUpdate("insert into expenses(type, amount, category, transaction_date) values ('"
-						+ type + "','" + amount + "','" + category
-						+ "','" + date + "')");
+				expensesSelectQuery = stmt
+						.executeQuery("select * from expenses where transactionId = '" + transactionId + "'");
+				if (expensesSelectQuery.next()) {
+					return true;
+				}
 				break;
+			}
+			default -> {
+				System.out.println("Invalid Type: " + type);
+				return false;
+			}
+		}
+		System.out.println("Transaction not found.");
+		return false;
+	}
+
+	// Get transaction in database
+	public Transaction getTransaction(String transactionId, String type) throws SQLException {
+		ResultSet incomeSelectQuery, expensesSelectQuery;
+		Transaction transaction = new Transaction();
+
+		if (verifyTransaction(transactionId, type)) {
+			switch (type) {
+				case "INCOME" -> {
+					incomeSelectQuery = stmt
+							.executeQuery("select * from income where transactionId = '" + transactionId + "'");
+					while (incomeSelectQuery.next()) {
+						transaction.setAccountId(incomeSelectQuery.getInt(1));
+						transaction.setTransactionId(incomeSelectQuery.getString(2));
+						transaction.setType(incomeSelectQuery.getString(3));
+						transaction.setAmount(incomeSelectQuery.getDouble(4));
+						transaction.setSource(incomeSelectQuery.getString(5));
+						transaction.setDescription(incomeSelectQuery.getString(6));
+						transaction.setDate(incomeSelectQuery.getDate(7));
+						transaction.setSystem_date(incomeSelectQuery.getTimestamp(8));
+					}
+					break;
+				}
+				case "EXPENSES" -> {
+					expensesSelectQuery = stmt
+							.executeQuery("select * from expenses where transactionId = '" + transactionId + "'");
+					while (expensesSelectQuery.next()) {
+						transaction.setAccountId(expensesSelectQuery.getInt(1));
+						transaction.setTransactionId(expensesSelectQuery.getString(2));
+						transaction.setType(expensesSelectQuery.getString(3));
+						transaction.setAmount(expensesSelectQuery.getDouble(4));
+						transaction.setCategory(expensesSelectQuery.getString(5));
+						transaction.setDescription(expensesSelectQuery.getString(6));
+						transaction.setDate(expensesSelectQuery.getDate(7));
+						transaction.setSystem_date(expensesSelectQuery.getTimestamp(8));
+					}
+					break;
+				}
+				default -> {
+					System.out.println("Invalid type: " + type);
+					return null;
+				}
+			}
+		}
+		return transaction;
+	}
+
+	// Fetch all transactions
+	public List<Transaction> fetchTransactions() throws SQLException {
+		ResultSet incomeSelectQuery, expensesSelectQuery;
+		List<Transaction> transactions = new ArrayList<>();
+
+		incomeSelectQuery = stmt.executeQuery("select * from income");
+		while (incomeSelectQuery.next()) {
+			Transaction incomeTransaction = new Transaction();
+			incomeTransaction.setAccountId(incomeSelectQuery.getInt(1));
+			incomeTransaction.setTransactionId(incomeSelectQuery.getString(2));
+			incomeTransaction.setType(incomeSelectQuery.getString(3));
+			incomeTransaction.setAmount(incomeSelectQuery.getDouble(4));
+			incomeTransaction.setSource(incomeSelectQuery.getString(5));
+			incomeTransaction.setDescription(incomeSelectQuery.getString(6));
+			incomeTransaction.setDate(incomeSelectQuery.getDate(7));
+			incomeTransaction.setSystem_date(incomeSelectQuery.getTimestamp(8));
+			transactions.add(incomeTransaction);
+		}
+		incomeSelectQuery.close();
+
+		expensesSelectQuery = stmt.executeQuery("select * from expenses");
+		while (expensesSelectQuery.next()) {
+			Transaction expensesTransaction = new Transaction();
+			expensesTransaction.setAccountId(expensesSelectQuery.getInt(1));
+			expensesTransaction.setTransactionId(expensesSelectQuery.getString(2));
+			expensesTransaction.setType(expensesSelectQuery.getString(3));
+			expensesTransaction.setAmount(expensesSelectQuery.getDouble(4));
+			expensesTransaction.setCategory(expensesSelectQuery.getString(5));
+			expensesTransaction.setDescription(expensesSelectQuery.getString(6));
+			expensesTransaction.setDate(expensesSelectQuery.getDate(7));
+			expensesTransaction.setSystem_date(expensesSelectQuery.getTimestamp(8));
+			transactions.add(expensesTransaction);
+		}
+		expensesSelectQuery.close();
+
+		return transactions;
+	}
+
+	// Insert transaction into database
+	public void insertTransaction(Transaction transaction, int accountId) throws SQLException {
+		String transactionId = transaction.getTransactionId();
+		String type = transaction.getType();
+		double amount = transaction.getAmount();
+		String source = transaction.getSource();
+		String category = transaction.getCategory();
+		String description = transaction.getDescription();
+		Date date = transaction.getDate();
+
+		if (!verifyTransaction(transactionId, type)) {
+			switch (type) {
+				case "INCOME" -> {
+					source = source.toUpperCase();
+					description = description.toUpperCase();
+					stmt.executeUpdate(
+							"insert into income(accountId, transactionId, type, amount, source, description, date) values ("
+									+ accountId + ",'" + transactionId + "','" + type + "','" + amount + "','"
+									+ source + "','" + description + "','" + date + "')");
+					break;
+				}
+				case "EXPENSES" -> {
+					category = category.toUpperCase();
+					description = description.toUpperCase();
+					stmt.executeUpdate(
+							"insert into expenses(accountId, transactionId, type, amount, category, description, date) values ("
+									+ accountId + ",'" + transactionId + "','" + type + "','" + amount + "','"
+									+ category + "','" + description + "','" + date + "')");
+					break;
+				}
+				default -> {
+					System.out.println("Invalid Type: " + transaction.getType());
+					return;
+				}
 			}
 		}
 	}
 
 	// Update transaction in database
-	public void updateTransaction(TransactionManager transaction, String attributeChoice) throws SQLException {
-		@SuppressWarnings("resource")
-		Scanner choice = new Scanner(System.in);
-		int id = transaction.getTransactionId();
+	public void updateTransaction(Transaction transaction) throws SQLException {
+		String transactionId = transaction.getTransactionId();
 		String type = transaction.getType();
 		double amount = transaction.getAmount();
-		String source = transaction.getSource();
-		String category = transaction.getCategory();
 		Date date = transaction.getDate();
 
-		// Validate transaction type argument
-		while (!type.equalsIgnoreCase("INCOME") &&
-				!type.equalsIgnoreCase("EXPENSES")) {
-			System.out.println("Wrong type. Enter Income or Expenses: ");
-			type = choice.nextLine();
-		}
-		type = type.toUpperCase();
-
-		if (verifyTransaction(transaction)) {
+		if (verifyTransaction(transactionId, type)) {
 			switch (type) {
 				case "INCOME" -> {
-					// Validate attribute argument for Income
-					while (!attributeChoice.equalsIgnoreCase("AMOUNT") &&
-							!attributeChoice.equalsIgnoreCase("SOURCE") &&
-							!attributeChoice.equalsIgnoreCase("DATE")) {
-						System.out.println("Wrong attribute. Enter a valid attribute: Amount, Source or Date: ");
-						attributeChoice = choice.nextLine();
-					}
-					attributeChoice = attributeChoice.toUpperCase();
-
-					switch (attributeChoice) {
-						case "AMOUNT" ->
-							stmt.executeUpdate("update income set amount = " + amount + " where id = "
-									+ id);
-						case "SOURCE" -> {
-							source = source.toUpperCase();
-							stmt.executeUpdate("update income set source = '" + source + "' where id = "
-									+ id);
-						}
-						case "DATE" ->
-							stmt.executeUpdate("update income set transaction_date = '" + date + "' where id = "
-									+ id);
-					}
+					String source = transaction.getSource().toUpperCase();
+					String description = transaction.getDescription().toUpperCase();
+					stmt.executeUpdate(
+							"update income set amount = " + amount + " where transactionId = '" + transactionId + "'");
+					stmt.executeUpdate("update income set source = '" + source + "' where transactionId = '"
+							+ transactionId + "'");
+					stmt.executeUpdate("update income set description = '" + description + "' where transactionId = '"
+							+ transactionId + "'");
+					stmt.executeUpdate(
+							"update income set date = '" + date + "' where transactionId = '" + transactionId + "'");
+					break;
 				}
 				case "EXPENSES" -> {
-					// Validate attribute argument for Expenses
-					while (!attributeChoice.equalsIgnoreCase("AMOUNT") &&
-							!attributeChoice.equalsIgnoreCase("CATEGORY") &&
-							!attributeChoice.equalsIgnoreCase("DATE")) {
-						System.out.println("Wrong attribute. Enter a valid attribute Amount, Category or Date: ");
-						attributeChoice = choice.nextLine();
-					}
-					attributeChoice = attributeChoice.toUpperCase();
-
-					switch (attributeChoice) {
-						case "AMOUNT" ->
-							stmt.executeUpdate("update expenses set amount = " + amount + " where id = "
-									+ id);
-						case "CATEGORY" -> {
-							category = category.toUpperCase();
-							stmt.executeUpdate("update expenses set category = '" + category + "' where id = "
-									+ id);
-						}
-						case "DATE" ->
-							stmt.executeUpdate("update expenses set transaction_date = '" + date + "' where id = "
-									+ id);
-					}
+					String category = transaction.getCategory().toUpperCase();
+					String description = transaction.getDescription().toUpperCase();
+					stmt.executeUpdate("update expenses set amount = " + amount + " where transactionId = '"
+							+ transactionId + "'");
+					stmt.executeUpdate("update expenses set category = '" + category + "' where transactionId = '"
+							+ transactionId + "'");
+					stmt.executeUpdate("update income set description = '" + description + "' where transactionId = '"
+							+ transactionId + "'");
+					stmt.executeUpdate(
+							"update expenses set date = '" + date + "' where transactionId ='" + transactionId + "'");
+				}
+				default -> {
+					System.out.println("Invalid Type: " + transaction.getType());
+					return;
 				}
 			}
 		}
+
 	}
 
 	// Delete transaction in database
-	public void removeTransaction(TransactionManager transaction) throws SQLException {
-		@SuppressWarnings("resource")
-		Scanner choice = new Scanner(System.in);
-		int id = transaction.getTransactionId();
+	public void deleteTransaction(Transaction transaction) throws SQLException {
+		String transactionId = transaction.getTransactionId();
 		String type = transaction.getType();
 
-		if (verifyTransaction(transaction)) {
-			// Validate transaction type argument
-			while (!type.equalsIgnoreCase("INCOME") &&
-					!type.equalsIgnoreCase("EXPENSES")) {
-				System.out.println("Wrong type. Enter Income or Expenses: ");
-				type = choice.nextLine();
-			}
-			type = type.toUpperCase();
-
+		if (verifyTransaction(transactionId, type)) {
 			switch (type) {
 				case "INCOME" -> {
-					stmt.executeUpdate("delete from income where id = " + id);
+					stmt.executeUpdate("delete from income where transactionId = '" + transactionId + "'");
 					break;
 				}
 				case "EXPENSES" -> {
-					stmt.executeUpdate("delete from expenses where id = " + id);
+					stmt.executeUpdate("delete from expenses where transactionId = '" + transactionId + "'");
 					break;
 				}
-			}
-		}
-	}
-
-	// View recent transactions in database
-	public void getRecentTransactions() throws SQLException {
-		ResultSet incomeSelectQuery, expensesSelectQuery;
-		// Income Table
-		System.out.println("Income Transactions");
-		System.out.println("-------------------");
-		incomeSelectQuery = stmt.executeQuery("select * from recentIncome");
-		System.out.format("%-5s %-20s %-20s %-20s %-15s %-15s%n",
-				"ID", "TYPE", "AMOUNT", "SOURCE", "DATE", "ENTRY DATE");
-		System.out.println(
-				"--------------------------------------------------------------------------------------------------------");
-
-		if (incomeSelectQuery != null) {
-			while (incomeSelectQuery.next()) {
-				System.out.format("%-5s %-20s %-20s %-20s %-15s %-15s%n",
-						incomeSelectQuery.getInt(1),
-						incomeSelectQuery.getString(2),
-						incomeSelectQuery.getDouble(3),
-						incomeSelectQuery.getString(4),
-						incomeSelectQuery.getString(5),
-						incomeSelectQuery.getString(6));
-			}
-		}
-
-		// Expenses Table
-		System.out.println("\nExpenses Transactions");
-		System.out.println("---------------------");
-		expensesSelectQuery = stmt.executeQuery("select * from recentExpenses");
-		System.out.format("%-5s %-20s %-20s %-20s %-15s %-15s%n",
-				"ID", "TYPE", "AMOUNT", "CATEGORY", "DATE", "ENTRY DATE");
-		System.out.println(
-				"--------------------------------------------------------------------------------------------------------");
-
-		if (expensesSelectQuery != null) {
-			while (expensesSelectQuery.next()) {
-				System.out.format("%-5s %-20s %-20s %-20s %-15s %-15s%n",
-						expensesSelectQuery.getInt(1),
-						expensesSelectQuery.getString(2),
-						expensesSelectQuery.getDouble(3),
-						expensesSelectQuery.getString(4),
-						expensesSelectQuery.getString(5),
-						expensesSelectQuery.getString(6));
-			}
-		}
-	}
-
-	// View transaction in database
-	public void getTransaction(TransactionManager transaction) throws SQLException {
-		ResultSet incomeSelectQuery, expensesSelectQuery;
-		@SuppressWarnings("resource")
-		Scanner choice = new Scanner(System.in);
-		String type = transaction.getType();
-		int id = transaction.getTransactionId();
-
-		// Validate transaction type argument
-		while (!type.equalsIgnoreCase("INCOME") &&
-				!type.equalsIgnoreCase("EXPENSES")) {
-			System.out.println("Wrong type. Enter Income or Expenses: ");
-			type = choice.nextLine();
-		}
-		type = type.toUpperCase();
-
-		if (verifyTransaction(transaction)) {
-			switch (type) {
-				case "INCOME" -> {
-					incomeSelectQuery = stmt.executeQuery("select * from income where id = " + id);
-					System.out.format("%-5s %-20s %-20s %-20s %-20s%n",
-							"ID", "TYPE", "AMOUNT", "SOURCE", "DATE");
-					System.out
-							.println("-------------------------------------------------------------------------------");
-
-					while (incomeSelectQuery.next()) {
-						System.out.format("%-5s %-20s %-20s %-20s %-20s%n",
-								incomeSelectQuery.getInt(1),
-								incomeSelectQuery.getString(2),
-								incomeSelectQuery.getDouble(3),
-								incomeSelectQuery.getString(4),
-								incomeSelectQuery.getString(5));
-					}
-					break;
-				}
-				case "EXPENSES" -> {
-					expensesSelectQuery = stmt.executeQuery("select * from expenses where id = " + id);
-					System.out.format("%-5s %-20s %-20s %-20s %-20s%n",
-							"ID", "TYPE", "AMOUNT", "CATEGORY", "DATE");
-					System.out
-							.println("-------------------------------------------------------------------------------");
-
-					while (expensesSelectQuery.next()) {
-						System.out.format("%-5s %-20s %-20s %-20s %-20s%n",
-								expensesSelectQuery.getInt(1),
-								expensesSelectQuery.getString(2),
-								expensesSelectQuery.getDouble(3),
-								expensesSelectQuery.getString(4),
-								expensesSelectQuery.getString(5));
-					}
-					break;
+				default -> {
+					System.out.println("Invalid Type: " + transaction.getType());
+					return;
 				}
 			}
 		}
 	}
 
-	// Get balance by type
-	public double getBalance(String type) throws SQLException {
-		ResultSet incomeSelectQuery, expensesSelectQuery;
-		@SuppressWarnings("resource")
-		Scanner choice = new Scanner(System.in);
-		double incomeBalance = 0.0;
-		double expensesBalance = 0.0;
+	// Verify user account in database
+	public boolean verifyUserAccount(int accountId) throws SQLException {
+		ResultSet accountSelectQuery;
 
-		// Validate transaction type argument
-		while (!type.equalsIgnoreCase("INCOME") &&
-				!type.equalsIgnoreCase("EXPENSES")) {
-			System.out.println("Wrong type. Enter Income or Expenses: ");
-			type = choice.nextLine();
+		accountSelectQuery = stmt.executeQuery("select * from userAccount where accountId = " + accountId);
+		if (accountSelectQuery.next()) {
+			System.out.println("User account Id found.\n");
+			return true;
 		}
-		type = type.toUpperCase();
 
-		switch (type) {
-			case "INCOME" -> {
-				incomeSelectQuery = stmt.executeQuery("select sum(amount) from income");
-				if (incomeSelectQuery.next()) {
-					incomeBalance = incomeSelectQuery.getDouble(1);
-				}
+		System.out.println("User account Id not found.\n");
+		return false;
+	}
 
-				return incomeBalance;
-			}
-			case "EXPENSES" -> {
-				expensesSelectQuery = stmt.executeQuery("select sum(amount) from expenses");
-				if (expensesSelectQuery.next()) {
-					expensesBalance = expensesSelectQuery.getDouble(1);
-				}
+	// Verify User account by username in database
+	public boolean verifyAccountByUsername(String username) throws SQLException {
+		ResultSet accountSelectQuery;
 
-				return expensesBalance;
+		accountSelectQuery = stmt.executeQuery("select * from userAccount where username = '" + username + "'");
+		if (accountSelectQuery.next()) {
+			System.out.println("User account username found.\n");
+			return true;
+		}
+
+		System.out.println("User account username not found.\n");
+		return false;
+	}
+
+	// Get user account in database
+	public UserAccount getUserAccount(int accountId) throws SQLException {
+		ResultSet accountSelectQuery = null;
+		UserAccount userAccount = null;
+
+		if (verifyUserAccount(accountId)) {
+			accountSelectQuery = stmt.executeQuery("select * from userAccount where accountId = '" + accountId + "'");
+			while (accountSelectQuery.next()) {
+				accountId = accountSelectQuery.getInt(1);
+				String firstName = accountSelectQuery.getString(2);
+				String lastName = accountSelectQuery.getString(3);
+				String username = accountSelectQuery.getString(4);
+				Date birthday = accountSelectQuery.getDate(5);
+				String password = accountSelectQuery.getString(6);
+				String email = accountSelectQuery.getString(7);
+				userAccount = new UserAccount(firstName, lastName, username, birthday, password, email);
+				userAccount.setAccountId(accountId);
 			}
-			default -> {
-				return 0;
-			}
+		}
+		if (accountSelectQuery != null) {
+			accountSelectQuery.close();
+		}
+		return userAccount;
+	}
+
+	// Fetch all user accounts
+	public List<UserAccount> fetchUserAccounts() throws SQLException {
+		ResultSet accountSelectQuery;
+		List<UserAccount> userAccounts = new ArrayList<>();
+
+		accountSelectQuery = stmt.executeQuery("select * from userAccount");
+		while (accountSelectQuery.next()) {
+			int accountId = accountSelectQuery.getInt(1);
+			String firstName = accountSelectQuery.getString(2);
+			String lastName = accountSelectQuery.getString(3);
+			String username = accountSelectQuery.getString(4);
+			Date birthday = accountSelectQuery.getDate(5);
+			String password = accountSelectQuery.getString(6);
+			String email = accountSelectQuery.getString(7);
+			UserAccount userAccount = new UserAccount(firstName, lastName, username, birthday, password, email);
+			userAccounts.add(userAccount);
+			userAccount.setAccountId(accountId);
+		}
+
+		accountSelectQuery.close();
+		return userAccounts;
+	}
+
+	// Insert user account into database
+	public void insertAccount(UserAccount userAccount) throws SQLException {
+		String firstName = userAccount.getFirstName();
+		String lastName = userAccount.getLastName();
+		String username = userAccount.getUsername();
+		Date birthday = userAccount.getBirthday();
+		String password = userAccount.getPassword();
+		String email = userAccount.getEmail();
+
+		stmt.executeUpdate(
+				"insert into userAccount(firstName, lastName, username, birthday, password, email) values ('"
+						+ firstName + "','" + lastName + "','" + username + "','" + birthday
+						+ "','"
+						+ password + "','" + email + "')");
+		System.out.println("Account added Successfully!\n");
+	}
+
+	// Update user account in database
+	public void updateAccount(UserAccount userAccount) throws SQLException {
+		int accountId = userAccount.getAccountId();
+		String firstName = userAccount.getFirstName();
+		String lastName = userAccount.getLastName();
+		String username = userAccount.getUsername();
+		Date birthday = userAccount.getBirthday();
+		String password = userAccount.getPassword();
+		String email = userAccount.getEmail();
+
+		if (verifyUserAccount(accountId)) {
+			stmt.executeUpdate(
+					"update userAccount set firstName = " + firstName + " where accountId = '" + accountId + "'");
+			stmt.executeUpdate(
+					"update userAccount set lastName = '" + lastName + "' where accountId = '" + accountId + "'");
+			stmt.executeUpdate(
+					"update userAccount set username = '" + username + "' where accountId = '" + accountId + "'");
+			stmt.executeUpdate(
+					"update userAccount set birthday = '" + birthday + "' where accountId = '" + accountId + "'");
+			stmt.executeUpdate(
+					"update userAccount set password = '" + password + "' where accountId = '" + accountId + "'");
+			stmt.executeUpdate("update userAccount set email = '" + email + "' where accountId = '" + accountId + "'");
 		}
 	}
 
-	// Filter transaction by date
-	public void getFilteredTransactionDate(String type, DateFilter dateFilter) throws SQLException {
-		ResultSet incomeSelectQuery, expensesSelectQuery;
-		@SuppressWarnings("resource")
-		Scanner choice = new Scanner(System.in);
-		Date startDate = dateFilter.getStartDate();
-		Date endDate = dateFilter.getEndDate();
+	// Delete user account in database
+	public void deleteUserAccount(UserAccount userAccount) throws SQLException {
+		int accountId = userAccount.getAccountId();
 
-		// Validate transaction type argument
-		while (!type.equalsIgnoreCase("INCOME") &&
-				!type.equalsIgnoreCase("EXPENSES")) {
-			System.out.println("Wrong type. Enter Income or Expenses: ");
-			type = choice.nextLine();
-		}
-		type = type.toUpperCase();
-
-		switch (type) {
-			case "INCOME" -> {
-				incomeSelectQuery = stmt.executeQuery("select * from income where transaction_date between '"
-						+ startDate + "' and '" + endDate + "'");
-
-				System.out.format("\n%-5s %-20s %-20s %-20s %-15s %-15s%n",
-						"ID", "TYPE", "AMOUNT", "SOURCE", "DATE", "ENTRY DATE");
-				System.out.println(
-						"--------------------------------------------------------------------------------------------------------");
-				if (incomeSelectQuery != null) {
-					while (incomeSelectQuery.next()) {
-						System.out.format("%-5s %-20s %-20s %-20s %-15s %-15s%n",
-								incomeSelectQuery.getInt(1),
-								incomeSelectQuery.getString(2),
-								incomeSelectQuery.getDouble(3),
-								incomeSelectQuery.getString(4),
-								incomeSelectQuery.getString(5),
-								incomeSelectQuery.getString(6));
-					}
-				}
-				break;
-			}
-
-			case "EXPENSES" -> {
-				expensesSelectQuery = stmt.executeQuery("select * from expenses where transaction_date between '"
-						+ startDate + "' and '" + endDate + "'");
-				System.out.format("\n%-5s %-20s %-20s %-20s %-15s %-15s%n",
-						"ID", "TYPE", "AMOUNT", "CATEGORY", "DATE", "ENTRY DATE");
-				System.out.println(
-						"--------------------------------------------------------------------------------------------------------");
-
-				if (expensesSelectQuery != null) {
-					while (expensesSelectQuery.next()) {
-						System.out.format("%-5s %-20s %-20s %-20s %-15s %-15s%n",
-								expensesSelectQuery.getInt(1),
-								expensesSelectQuery.getString(2),
-								expensesSelectQuery.getDouble(3),
-								expensesSelectQuery.getString(4),
-								expensesSelectQuery.getString(5),
-								expensesSelectQuery.getString(6));
-					}
-				}
-				break;
-			}
+		if (verifyUserAccount(accountId)) {
+			stmt.executeUpdate("delete from userAccount where accountId = '" + accountId + "'");
 		}
 	}
 
-	// Filter transaction by amount
-	public void getFilteredTransactionAmount(String type, AmountFilter amountFilter)
-			throws SQLException {
-		ResultSet incomeSelectQuery, expensesSelectQuery;
-		@SuppressWarnings("resource")
-		Scanner choice = new Scanner(System.in);
-		double startAmount = amountFilter.getStartAmount();
-		double endAmount = amountFilter.getEndAmount();
-
-		// Validate transaction type argument
-		while (!type.equalsIgnoreCase("INCOME") &&
-				!type.equalsIgnoreCase("EXPENSES")) {
-			System.out.println("Wrong type. Enter Income or Expenses: ");
-			type = choice.nextLine();
-		}
-		type = type.toUpperCase();
-
-		switch (type) {
-			case "INCOME" -> {
-				incomeSelectQuery = stmt.executeQuery("select * from income where amount between '"
-						+ startAmount + "' and '" + endAmount + "'");
-				System.out.format("\n%-5s %-20s %-20s %-20s %-15s %-15s%n",
-						"ID", "TYPE", "AMOUNT", "SOURCE", "DATE", "ENTRY DATE");
-				System.out.println(
-						"--------------------------------------------------------------------------------------------------------");
-				if (incomeSelectQuery != null) {
-					while (incomeSelectQuery.next()) {
-						System.out.format("%-5s %-20s %-20s %-20s %-15s %-15s%n",
-								incomeSelectQuery.getInt(1),
-								incomeSelectQuery.getString(2),
-								incomeSelectQuery.getDouble(3),
-								incomeSelectQuery.getString(4),
-								incomeSelectQuery.getString(5),
-								incomeSelectQuery.getString(6));
-					}
-				}
-				break;
-			}
-
-			case "EXPENSES" -> {
-				expensesSelectQuery = stmt.executeQuery("select * from expenses where amount between '"
-						+ startAmount + "' and '" + endAmount + "'");
-				System.out.format("\n%-5s %-20s %-20s %-20s %-15s %-15s%n",
-						"ID", "TYPE", "AMOUNT", "CATEGORY", "DATE", "ENTRY DATE");
-				System.out.println(
-						"--------------------------------------------------------------------------------------------------------");
-
-				if (expensesSelectQuery != null) {
-					while (expensesSelectQuery.next()) {
-						System.out.format("%-5s %-20s %-20s %-20s %-15s %-15s%n",
-								expensesSelectQuery.getInt(1),
-								expensesSelectQuery.getString(2),
-								expensesSelectQuery.getDouble(3),
-								expensesSelectQuery.getString(4),
-								expensesSelectQuery.getString(5),
-								expensesSelectQuery.getString(6));
-					}
-				}
-				break;
-			}
-		}
-	}
-
-	// Filter transaction by source
-	public void getFilteredTransactionSource(String type, SourceFilter sourceFilter)
-			throws SQLException {
-		ResultSet incomeSelectQuery;
-		@SuppressWarnings("resource")
-		Scanner choice = new Scanner(System.in);
-		String source = sourceFilter.getSource();
-
-		// Validate income transaction type arguement
-		while (!type.equalsIgnoreCase("INCOME")) {
-			System.out.println("Wrong type. Enter Income: ");
-			type = choice.nextLine();
-		}
-		type = type.toUpperCase();
-		source = source.toUpperCase();
-
-		switch (type) {
-			case "INCOME" -> {
-				incomeSelectQuery = stmt.executeQuery("select * from income where source = '"
-						+ source + "'");
-				System.out.format("\n%-5s %-20s %-20s %-20s %-15s %-15s%n",
-						"ID", "TYPE", "AMOUNT", "SOURCE", "DATE", "ENTRY DATE");
-				System.out.println(
-						"--------------------------------------------------------------------------------------------------------");
-				if (incomeSelectQuery != null) {
-					while (incomeSelectQuery.next()) {
-						System.out.format("%-5s %-20s %-20s %-20s %-15s %-15s%n",
-								incomeSelectQuery.getInt(1),
-								incomeSelectQuery.getString(2),
-								incomeSelectQuery.getDouble(3),
-								incomeSelectQuery.getString(4),
-								incomeSelectQuery.getString(5),
-								incomeSelectQuery.getString(6));
-					}
-				}
-				break;
-			}
-		}
-
-	}
-
-	// Filter transaction by category
-	public void getFilteredTransactionCategory(String type, CategoryFilter categoryFilter)
-			throws SQLException {
-		ResultSet expensesSelectQuery;
-		@SuppressWarnings("resource")
-		Scanner choice = new Scanner(System.in);
-		String category = categoryFilter.getCategory();
-
-		// Validate income transaction type arguement
-		while (!type.equalsIgnoreCase("EXPENSES")) {
-			System.out.println("Wrong type. Enter Expenses: ");
-			type = choice.nextLine();
-		}
-		type = type.toUpperCase();
-		category = category.toUpperCase();
-
-		switch (type) {
-			case "EXPENSES" -> {
-				expensesSelectQuery = stmt.executeQuery("select * from expenses where category = '"
-						+ category + "'");
-				System.out.format("\n%-5s %-20s %-20s %-20s %-15s %-15s%n",
-						"ID", "TYPE", "AMOUNT", "CATEGORY", "DATE", "ENTRY DATE");
-				System.out.println(
-						"--------------------------------------------------------------------------------------------------------");
-				if (expensesSelectQuery != null) {
-					while (expensesSelectQuery.next()) {
-						System.out.format("%-5s %-20s %-20s %-20s %-15s %-15s%n",
-								expensesSelectQuery.getInt(1),
-								expensesSelectQuery.getString(2),
-								expensesSelectQuery.getDouble(3),
-								expensesSelectQuery.getString(4),
-								expensesSelectQuery.getString(5),
-								expensesSelectQuery.getString(6));
-					}
-				}
-				break;
-			}
+	public void updateAccountPassword(int accountId, String password) throws SQLException {
+		if (verifyUserAccount(accountId)) {
+			stmt.executeUpdate(
+					"update userAccount set password = '" + password + "' where accountId = " + accountId);
 		}
 	}
 }
