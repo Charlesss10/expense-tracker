@@ -3,8 +3,8 @@ package com.charles;
 import java.io.IOException;
 import java.sql.SQLException;
 
-//User interface that defines all core functions
 public interface UserInterface {
-	public void transactionManager(String transactionManagerPrompt)
-			throws ClassNotFoundException, SQLException, IOException;
+	public boolean userAccountManager(String userAccountManagerPrompt) throws SQLException;
+	public boolean authManager(String authManagerPrompt) throws SQLException, IOException;
+	public void transactionManager(String transactionManagerPrompt) throws ClassNotFoundException, SQLException, IOException;
 }

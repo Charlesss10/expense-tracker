@@ -1,613 +1,256 @@
 package com.charles;
 
 import java.io.IOException;
-import java.sql.Date;
 import java.sql.SQLException;
-import java.util.Scanner;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class TransactionManager {
-	private String type;
-	private double amount;
-	private String category;
-	private String source;
-	private Date date;
-	private double totalIncome;
-	private double totalExpenses;
-	private int transactionId;
+	private List<Transaction> transactions = new ArrayList<>();
 	private final Database database = Database.getInstance();
 
-	public String getType() {
-		return this.type;
-	}
-
-	public double getAmount() {
-		return this.amount;
-	}
-
-	public String getCategory() {
-		return this.category;
-	}
-
-	public String getSource() {
-		return this.source;
-	}
-
-	public Date getDate() {
-		return this.date;
-	}
-
-	public double getTotalIncome() {
-		return this.totalIncome;
-	}
-
-	public double getTotalExpenses() {
-		return this.totalExpenses;
-	}
-
-	public int getTransactionId() {
-		return this.transactionId;
-	}
-
-	public void setType(String type) {
-		this.type = type;
-	}
-
-	public void setAmount(double amount) {
-		this.amount = amount;
-	}
-
-	public void setCategory(String category) {
-		this.category = category;
-	}
-
-	public void setSource(String source) {
-		this.source = source;
-	}
-
-	public void setDate(Date date) {
-		this.date = date;
-	}
-
-	public void setTransactionId(int id) {
-		this.transactionId = id;
+	public TransactionManager() throws SQLException {
+		this.transactions = database.fetchTransactions();
 	}
 
 	// Add Transaction
-	public void addTransaction() throws ClassNotFoundException, SQLException, IOException {
-		@SuppressWarnings("resource")
-		Scanner choice = new Scanner(System.in);
-		String transactionChoice;
-		String continueChoice;
-
-		do {
-			System.out.println("\nAdd Transaction");
-			System.out.println("A. Income");
-			System.out.println("B. Expenses");
-			transactionChoice = choice.nextLine();
-
-			// Validate user input
-			while (!transactionChoice.equalsIgnoreCase("A") &&
-					!transactionChoice.equalsIgnoreCase("B")) {
-				System.out.println("Wrong option. Retry: ");
-				transactionChoice = choice.nextLine();
+	public void addTransaction(Transaction transaction, int accountId)
+			throws ClassNotFoundException, SQLException, IOException {
+		// Add Transaction into the database
+		switch (transaction.getType()) {
+			case "INCOME" -> {
+				database.insertTransaction(transaction, accountId);
 			}
-			transactionChoice = transactionChoice.toUpperCase();
-
-			switch (transactionChoice) {
-
-				case "A" -> {
-					// Add Income
-					System.out.println("\nAdd Income");
-					this.type = "INCOME";
-
-					while (true) {
-						System.out.println("Transaction amount: ");
-						try {
-							this.amount = choice.nextDouble();
-							if (this.amount < 0) {
-								System.out.println("Invalid input. Please enter a positive value.");
-							} else {
-								break;
-							}
-						} catch (Exception e) {
-							System.out.println("Invalid input. Please enter a valid number.");
-							choice.nextLine(); // Clear the invalid input
-						}
-					}
-					choice.nextLine();
-
-					System.out.println("Transaction source: ");
-					this.source = choice.nextLine();
-
-					while (true) {
-						System.out.println("Transaction date(YYYY-MM-DD): ");
-						try {
-							String dateInput = choice.nextLine();
-							this.date = Date.valueOf(dateInput);
-							break;
-						} catch (Exception e) {
-							System.out.println("Invalid input. Please enter a valid date.");
-						}
-					}
-				}
-
-				case "B" -> {
-					// Add Expenses
-					System.out.println("\nAdd Expenses");
-					this.type = "EXPENSES";
-
-					while (true) {
-						System.out.println("Transaction amount: ");
-						try {
-							this.amount = choice.nextDouble();
-							if (this.amount < 0) {
-								System.out.println("Invalid input. Please enter a positive value.");
-							} else {
-								break;
-							}
-						} catch (Exception e) {
-							System.out.println("Invalid input. Please enter a valid number.");
-							choice.nextLine();
-						}
-					}
-					choice.nextLine();
-
-					System.out.println("Transaction category: ");
-					this.category = choice.nextLine();
-
-					while (true) {
-						System.out.println("Transaction date(YYYY-MM-DD): ");
-						try {
-							String dateInput = choice.nextLine();
-							this.date = Date.valueOf(dateInput);
-							break;
-						} catch (Exception e) {
-							System.out.println("Invalid input. Please enter a valid date.");
-						}
-					}
-				}
+			case "EXPENSES" -> {
+				database.insertTransaction(transaction, accountId);
 			}
-
-			database.insertTransaction(this);
-			System.out.println("\nTransaction Successful!\n");
-
-			System.out.println("Would you like to enter another transaction? Y/N");
-			continueChoice = choice.nextLine();
-
-		} while (continueChoice.equalsIgnoreCase("Y"));
+			default -> {
+				System.out.println("Invalid Type: " + transaction.getType());
+				return;
+			}
+		}
+		System.out.println("\nTransaction Successful!\n");
 	}
 
 	// Edit Transaction
-	public void editTransaction() throws SQLException {
-		@SuppressWarnings("resource")
-		Scanner choice = new Scanner(System.in);
-		String transactionChoice;
-		String continueChoice;
-		String modifyChoice;
-		String continueModifyChoice;
-
-		do {
-			System.out.println("\nModify Transaction");
-			System.out.println("A. Income");
-			System.out.println("B. Expenses");
-			transactionChoice = choice.nextLine();
-
-			// Validate user input
-			while (!transactionChoice.equalsIgnoreCase("A") &&
-					!transactionChoice.equalsIgnoreCase("B")) {
-				System.out.println("Wrong option. Retry: ");
-				transactionChoice = choice.nextLine();
-			}
-			transactionChoice = transactionChoice.toUpperCase();
-
-			// Edit Income
-			switch (transactionChoice) {
-				case "A" -> {
-					System.out.println("\nModify Income");
-					this.type = "INCOME";
-
-					while (true) {
-						System.out.println("Enter TransactionId: ");
-						try {
-							this.transactionId = choice.nextInt();
-							break;
-						} catch (Exception e) {
-							System.out.println("Invalid input. Please enter a valid number.");
-							choice.nextLine();
-						}
+	public boolean editTransaction(Transaction transaction) throws SQLException {
+		for (Transaction validTransaction : this.transactions) {
+			if (validTransaction.getTransactionId().equals(transaction.getTransactionId())) {
+				switch (transaction.getType()) {
+					case "INCOME" -> {
+						validTransaction.setAmount(transaction.getAmount());
+						validTransaction.setSource(transaction.getSource());
+						validTransaction.setDescription(transaction.getDescription());
+						validTransaction.setDate(transaction.getDate());
 					}
-					choice.nextLine();
-
-					database.verifyTransaction(this);
-
-					database.getTransaction(this);
-					choice.nextLine();
-
-					do {
-						System.out.println("Which attribute would you like to modify: ");
-						System.out.println("A. Amount");
-						System.out.println("B. Source");
-						System.out.println("C. Date");
-						modifyChoice = choice.nextLine();
-
-						// Validate user input
-						while (!modifyChoice.equalsIgnoreCase("A") &&
-								!modifyChoice.equalsIgnoreCase("B") &&
-								!modifyChoice.equalsIgnoreCase("C")) {
-							System.out.println("Wrong option. Retry: ");
-							modifyChoice = choice.nextLine();
-						}
-						modifyChoice = modifyChoice.toUpperCase();
-
-						switch (modifyChoice) {
-							case "A" -> {
-								while (true) {
-									System.out.println("Set amount: ");
-									try {
-										this.amount = choice.nextDouble();
-										if (this.amount < 0) {
-											System.out.println("Invalid input. Please enter a positive value.");
-										} else {
-											break;
-										}
-									} catch (Exception e) {
-										System.out.println("Invalid input. Please enter a valid number.");
-										choice.nextLine();
-									}
-								}
-								choice.nextLine();
-
-								database.updateTransaction(this, "AMOUNT");
-								break;
-							}
-							case "B" -> {
-								System.out.println("Set Source: ");
-								this.source = choice.nextLine();
-								database.updateTransaction(this, "SOURCE");
-								break;
-							}
-							case "C" -> {
-								while (true) {
-									System.out.println("Set date(YYYY-MM-DD): ");
-									try {
-										String dateInput = choice.nextLine();
-										this.date = Date.valueOf(dateInput);
-										break;
-									} catch (Exception e) {
-										System.out.println("Invalid input. Please enter a valid date.");
-									}
-								}
-								database.updateTransaction(this, "DATE");
-								break;
-							}
-						}
-						System.out.println("Transaction modified successfully!\n");
-						database.getTransaction(this);
-						choice.nextLine();
-						System.out.println("\nWould you like to modify any other attribute Y/N: ");
-						continueModifyChoice = choice.nextLine();
-					} while (continueModifyChoice.equalsIgnoreCase("Y"));
-					break;
-				}
-
-				// Edit Expenses
-				case "B" -> {
-					System.out.println("\nModify Expenses");
-					this.type = "EXPENSES";
-
-					while (true) {
-						System.out.println("Enter TransactionId: ");
-						try {
-							this.transactionId = choice.nextInt();
-							break;
-						} catch (Exception e) {
-							System.out.println("Invalid input. Please enter a valid number.");
-							choice.nextLine();
-						}
+					case "EXPENSES" -> {
+						validTransaction.setAmount(transaction.getAmount());
+						validTransaction.setCategory(transaction.getCategory());
+						validTransaction.setDescription(transaction.getDescription());
+						validTransaction.setDate(transaction.getDate());
 					}
-					choice.nextLine();
-
-					database.verifyTransaction(this);
-
-					database.getTransaction(this);
-					choice.nextLine();
-
-					do {
-						System.out.println("\nWhich attribute would you like to modify: ");
-						System.out.println("A. Amount");
-						System.out.println("B. Category");
-						System.out.println("C. Date");
-						modifyChoice = choice.nextLine();
-
-						// Validate user input
-						while (!modifyChoice.equalsIgnoreCase("A") &&
-								!modifyChoice.equalsIgnoreCase("B") &&
-								!modifyChoice.equalsIgnoreCase("C")) {
-							System.out.println("Wrong option. Retry: ");
-							modifyChoice = choice.nextLine();
-						}
-						modifyChoice = modifyChoice.toUpperCase();
-
-						switch (modifyChoice) {
-							case "A" -> {
-								while (true) {
-									System.out.println("Set amount: ");
-									try {
-										this.amount = choice.nextDouble();
-										if (this.amount < 0) {
-											System.out.println("Invalid input. Please enter a positive value.");
-										} else {
-											break;
-										}
-									} catch (Exception e) {
-										System.out.println("Invalid input. Please enter a valid number.");
-										choice.nextLine();
-									}
-								}
-								choice.nextLine();
-
-								database.updateTransaction(this, "AMOUNT");
-								break;
-							}
-							case "B" -> {
-								System.out.println("Set Category: ");
-								this.category = choice.nextLine();
-								database.updateTransaction(this, "CATEGORY");
-								break;
-							}
-							case "C" -> {
-								while (true) {
-									System.out.println("Set date(YYYY-MM-DD): ");
-									try {
-										String dateInput = choice.nextLine();
-										this.date = Date.valueOf(dateInput);
-										break;
-									} catch (Exception e) {
-										System.out.println("Invalid input. Please enter a valid date.");
-									}
-								}
-								database.updateTransaction(this, "DATE");
-								break;
-							}
-						}
-						System.out.println("Transaction modified successfully!\n");
-						database.getTransaction(this);
-						choice.nextLine();
-						System.out.println("\nWould you like to modify any other attribute Y/N: ");
-						continueModifyChoice = choice.nextLine();
-					} while (continueModifyChoice.equalsIgnoreCase("Y"));
-					break;
+					default -> {
+						System.out.println("Invalid Type: " + transaction.getType());
+						return false;
+					}
 				}
+				database.updateTransaction(transaction);
+				System.out.println("Transaction modified successfully!\n");
+				return true;
 			}
-			System.out.println("Would you like to modify another transaction? Y/N");
-			continueChoice = choice.nextLine();
-		} while (continueChoice.equalsIgnoreCase("Y"));
+		}
+		System.out.println("Transaction not found");
+		return false;
 	}
 
 	// Delete Transaction
-	public void deleteTransaction() throws SQLException {
-		@SuppressWarnings("resource")
-		Scanner choice = new Scanner(System.in);
-		String transactionChoice;
-		String continueChoice;
-		String deleteConfirmation;
-
-		do {
-			System.out.println("\nDelete Transaction");
-			System.out.println("A. Income");
-			System.out.println("B. Expenses");
-			transactionChoice = choice.nextLine();
-
-			// Validate user input
-			while (!transactionChoice.equalsIgnoreCase("A") &&
-					!transactionChoice.equalsIgnoreCase("B")) {
-				System.out.println("Wrong option. Retry: ");
-				transactionChoice = choice.nextLine();
-			}
-			transactionChoice = transactionChoice.toUpperCase();
-
-			switch (transactionChoice) {
-				// Delete Income
-				case "A" -> {
-					System.out.println("\nDelete Income");
-					this.type = "INCOME";
-
-					while (true) {
-						System.out.println("Enter TransactionId: ");
-						try {
-							this.transactionId = choice.nextInt();
-							break;
-						} catch (Exception e) {
-							System.out.println("Invalid input. Please enter a valid number.");
-							choice.nextLine();
-						}
+	public void deleteTransaction(Transaction transaction) throws SQLException {
+		for (Transaction validTransaction : this.transactions) {
+			if (validTransaction.getTransactionId().equals(transaction.getTransactionId())) {
+				switch (transaction.getType()) {
+					case "INCOME" -> {
+						transactions.remove(validTransaction);
 					}
-
-					choice.nextLine();
-
-					database.verifyTransaction(this);
-
-					database.getTransaction(this);
-					choice.nextLine();
-
-					// Deletion Confirmation
-					System.out.println("Are you sure that you would like to delete this transaction? Y/N");
-					deleteConfirmation = choice.nextLine();
-
-					if (deleteConfirmation.equalsIgnoreCase("Y")) {
-						database.removeTransaction(this);
-						System.out.println("Transaction deleted successfully!\n");
+					case "EXPENSES" -> {
+						transactions.remove(validTransaction);
 					}
-					break;
+					default -> {
+						System.out.println("Invalid Type: " + transaction.getType());
+						return;
+					}
 				}
+				database.deleteTransaction(transaction);
+				System.out.println("Transaction deleted successfully!\n");
+				break;
+			}
+		}
+	}
 
-				// Delete Expenses
-				case "B" -> {
-					System.out.println("\nDelete Expenses");
-					this.type = "EXPENSES";
+	// Verify transaction from cache
+	public boolean verifyTransaction(String transactionId, String type) throws SQLException {
 
-					while (true) {
-						System.out.println("Enter TransactionId: ");
-						try {
-							this.transactionId = choice.nextInt();
-							break;
-						} catch (Exception e) {
-							System.out.println("Invalid input. Please enter a valid number.");
-							choice.nextLine();
-						}
-					}
+		// Validate transaction type
+		if (!type.equalsIgnoreCase("INCOME") && !type.equalsIgnoreCase("EXPENSES")) {
+			System.out.println("Invalid type: " + type);
+			return false;
+		}
 
-					database.verifyTransaction(this);
+		return database.verifyTransaction(transactionId, type);
+	}
 
-					database.getTransaction(this);
-					choice.nextLine();
+	// Get and view transaction
+	public Transaction getTransaction(String transactionId, String type) throws SQLException {
+		Transaction transaction;
 
-					// Deletion Confirmation
-					System.out.println("Are you sure that you would like to delete this transaction? Y/N");
-					deleteConfirmation = choice.nextLine();
-
-					if (deleteConfirmation.equalsIgnoreCase("Y")) {
-						database.removeTransaction(this);
-						System.out.println("Transaction deleted successfully!\n");
-					}
-					break;
+		if (database.verifyTransaction(transactionId, type)) {
+			transaction = database.getTransaction(transactionId, type);
+			switch (type) {
+				case "INCOME" -> {
+					System.out.println("\nINCOME TABLE:");
+					System.out.println("-------------");
+					System.out.format("%-52s %-20s %-20s %-20s %-20s %-20s%n",
+							"TRANSACTION ID", "TYPE", "AMOUNT", "SOURCE", "DESCRIPTION", "DATE");
+					System.out
+							.println(
+									"------------------------------------------------------------------------------------------------------------------");
+					System.out.format("%-52s %-20s %-20s %-20s %-20s %-20s%n",
+							transaction.getTransactionId(),
+							transaction.getType(),
+							transaction.getAmount(),
+							transaction.getSource(),
+							transaction.getDescription(),
+							transaction.getDate());
+					return transaction;
+				}
+				case "EXPENSES" -> {
+					System.out.println("\nEXPENSES TABLE:");
+					System.out.println("---------------");
+					System.out.format("%-52s %-20s %-20s %-20s %-20s %-20s%n",
+							"TRANSACTION ID", "TYPE", "AMOUNT", "CATEGORY", "DESCRIPTION", "DATE");
+					System.out
+							.println(
+									"------------------------------------------------------------------------------------------------------------------");
+					System.out.format("%-52s %-20s %-20s %-20s %-20s %-20s%n",
+							transaction.getTransactionId(),
+							transaction.getType(),
+							transaction.getAmount(),
+							transaction.getCategory(),
+							transaction.getDescription(),
+							transaction.getDate());
+					return transaction;
+				}
+				default -> {
+					System.out.println("Invalid Type: " + transaction.getType());
+					return null;
 				}
 			}
-			System.out.println("Would you like to delete another transaction? Y/N");
-			continueChoice = choice.nextLine();
-		} while (continueChoice.equalsIgnoreCase("Y"));
+		}
+		return null;
 	}
 
 	// Display total balance
 	public void getTotalBalance() throws SQLException {
-		@SuppressWarnings("resource")
-		Scanner choice = new Scanner(System.in);
 		double totalBalance;
+		double totalIncome = 0.0;
+		double totalExpenses = 0.0;
 
-		this.totalIncome = database.getBalance("INCOME");
-		this.totalExpenses = database.getBalance("EXPENSES");
+		System.out.println("\nTOTAL BALANCE");
+		System.out.println("-------------");
 
-		totalBalance = this.totalIncome - this.totalExpenses;
+		for (Transaction transaction : this.transactions) {
+			switch (transaction.getType()) {
+				case "INCOME" -> {
+					totalIncome = totalIncome + transaction.getAmount();
+					break;
+				}
+				case "EXPENSES" -> {
+					totalExpenses = totalExpenses + transaction.getAmount();
+					break;
+				}
+				default -> System.out.println("Invalid Type.");
+			}
+		}
+		totalBalance = totalIncome - totalExpenses;
 
-		System.out.println("\nTotal Balance: " + totalBalance);
-		System.out.println("Total Income: " + this.totalIncome);
-		System.out.println("Total Expenses: " + this.totalExpenses);
-		choice.nextLine();
+		System.out.println("Total Balance: " + totalBalance);
+		System.out.println("Total Income: " + totalIncome);
+		System.out.println("Total Expenses: " + totalExpenses);
 	}
 
 	// Display Recent Trasactions with filtering functionalities
-	public void getRecentTransactions() throws SQLException {
-		@SuppressWarnings("resource")
-		Scanner choice = new Scanner(System.in);
-		String filterCriteria;
-		String transactionChoice;
-		String continueFilterChoice;
-		String continueChoice;
-		FilterStrategy filterStrategy;
+	public void getRecentTransactions(double amountFilterStart, double amountFilterEnd, Date dateFilterStart,
+			Date dateFilterEnd,
+			String categoryFilter, String sourceFilter) throws SQLException {
+				System.out.println(dateFilterStart);
+				System.out.println(dateFilterEnd);
 
-		do {
-			System.out.println("\nRecent Transactions:\n");
-			database.getRecentTransactions();
-			choice.nextLine();
+			
+		List<Transaction> filteredTransactions = this.transactions.stream()
+				.filter(t -> (amountFilterStart == 0.0 && amountFilterEnd == 0.0 ||
+						(t.getAmount() >= amountFilterStart && t.getAmount() <= amountFilterEnd)) &&
 
-			// Option to filter transaction
-			System.out.println("A - Filter Income");
-			System.out.println("B - Filter Expenses");
-			transactionChoice = choice.nextLine();
+						(dateFilterStart == null && dateFilterEnd == null ||
+								t.getDate().compareTo(dateFilterStart) >= 0
+										&& t.getDate().compareTo(dateFilterEnd) <= 0)
+						&&
 
-			if (!transactionChoice.equalsIgnoreCase("A") &&
-					!transactionChoice.equalsIgnoreCase("B")) {
-				break;
-			}
+						(categoryFilter == null
+								|| (t.getType().equals("EXPENSES") && t.getCategory().equalsIgnoreCase(categoryFilter)))
+						&&
 
-			transactionChoice = transactionChoice.toUpperCase();
+						(sourceFilter == null
+								|| (t.getType().equals("INCOME") && t.getSource().equalsIgnoreCase(sourceFilter))))
+				.collect(Collectors.toList());
 
-			switch (transactionChoice) {
-				case "A" -> {
-					this.type = "INCOME";
-					do {
-						System.out.println("Choose a filter criteria: ");
-						System.out.println("A - Amount");
-						System.out.println("B - Source");
-						System.out.println("C - Date");
-						filterCriteria = choice.nextLine();
+		if (filteredTransactions.isEmpty()) {
+			System.out.println("No transactions found.");
+			return;
+		}
 
-						// Validate user input
-						while (!filterCriteria.equalsIgnoreCase("A") &&
-								!filterCriteria.equalsIgnoreCase("B") &&
-								!filterCriteria.equalsIgnoreCase("C")) {
-							System.out.println("Wrong option. Retry: ");
-							filterCriteria = choice.nextLine();
-						}
-						filterCriteria = filterCriteria.toUpperCase();
+		boolean incomeHeaderPrinted = false;
+		boolean expensesHeaderPrinted = false;
 
-						switch (filterCriteria) {
-							case "A" -> {
-								filterStrategy = new AmountFilter();
-								filterStrategy.filter(this.getType());
-								break;
-							}
-							case "B" -> {
-								filterStrategy = new SourceFilter();
-								filterStrategy.filter(this.getType());
-								break;
-							}
-							case "C" -> {
-								filterStrategy = new DateFilter();
-								filterStrategy.filter(this.getType());
-								break;
-							}
-						}
-						choice.nextLine();
-						System.out.println("Would you like to filter based on another criteria Y/N: ");
-						continueFilterChoice = choice.nextLine();
-					} while (continueFilterChoice.equalsIgnoreCase("Y"));
-					break;
+		for (Transaction transaction : filteredTransactions) {
+			if (transaction.getType().equals("INCOME")) {
+				if (!incomeHeaderPrinted) {
+					System.out.println("INCOME TABLE:");
+					System.out.println("-------------");
+					System.out.format("%-52s %-20s %-20s %-20s %-20s %-20s%n",
+							"TRANSACTION ID", "TYPE", "AMOUNT", "SOURCE", "DESCRIPTION", "DATE");
+					System.out
+							.println(
+									"---------------------------------------------------------------------------------------------------------------------------------------------------");
+					incomeHeaderPrinted = true;
 				}
-				case "B" -> {
-					this.type = "EXPENSES";
-					do {
-						System.out.println("Choose a filter criteria: ");
-						System.out.println("A - Amount");
-						System.out.println("B - Category");
-						System.out.println("C - Date");
-						filterCriteria = choice.nextLine();
+				System.out.format("%-52s %-20s %-20s %-20s %-20s %-20s%n",
+						transaction.getTransactionId(),
+						transaction.getType(),
+						transaction.getAmount(),
+						transaction.getSource(),
+						transaction.getDescription(),
+						transaction.getDate());
 
-						// Validate user input
-						while (!filterCriteria.equalsIgnoreCase("A") &&
-								!filterCriteria.equalsIgnoreCase("B") &&
-								!filterCriteria.equalsIgnoreCase("C")) {
-							System.out.println("Wrong option. Retry: ");
-							filterCriteria = choice.nextLine();
-						}
-						filterCriteria = filterCriteria.toUpperCase();
-
-						switch (filterCriteria) {
-							case "A" -> {
-								filterStrategy = new AmountFilter();
-								filterStrategy.filter(this.getType());
-								break;
-							}
-							case "B" -> {
-								filterStrategy = new CategoryFilter();
-								filterStrategy.filter(this.getType());
-								break;
-							}
-							case "C" -> {
-								filterStrategy = new DateFilter();
-								filterStrategy.filter(this.getType());
-								break;
-							}
-						}
-						choice.nextLine();
-						System.out.println("Would you like to filter based on another criteria Y/N: ");
-						continueFilterChoice = choice.nextLine();
-					} while (continueFilterChoice.equalsIgnoreCase("Y"));
-					break;
+			} else if (transaction.getType().equals("EXPENSES")) {
+				if (!expensesHeaderPrinted) {
+					System.out.println("\nEXPENSES TABLE:");
+					System.out.println("--------------");
+					System.out.format("%-52s %-20s %-20s %-20s %-20s %-20s%n",
+							"TRANSACTION ID", "TYPE", "AMOUNT", "CATEGORY", "DESCRIPTION", "DATE");
+					System.out
+							.println(
+									"---------------------------------------------------------------------------------------------------------------------------------------------------");
+					expensesHeaderPrinted = true;
 				}
+				System.out.format("%-52s %-20s %-20s %-20s %-20s %-20s%n",
+						transaction.getTransactionId(),
+						transaction.getType(),
+						transaction.getAmount(),
+						transaction.getCategory(),
+						transaction.getDescription(),
+						transaction.getDate());
 			}
-			System.out.println("Would you like to filter another transaction? Y/N");
-			continueChoice = choice.nextLine();
-		} while (continueChoice.equalsIgnoreCase("Y"));
+		}
 	}
 }

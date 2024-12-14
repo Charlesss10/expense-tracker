@@ -3,43 +3,27 @@ package com.charles;
 import java.sql.Date;
 import java.sql.SQLException;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
+import org.mindrot.jbcrypt.BCrypt;
 
 /**
  * Unit test for Expense-Tracker App.
  */
 public class AppTest {
-    @Test
-    public void testAddExpenses() throws SQLException {
-        TransactionManager tm = new TransactionManager();
-        String date = "2024-10-02";
-
-        tm.setType("Expenses");
-        tm.setAmount(4000);
-        tm.setCategory("shopping");
-        tm.setDate(Date.valueOf(date));
-
-        assertEquals("Expenses", tm.getType(), "Expenses");
-        assertEquals(4000, tm.getAmount(), 4000);
-        assertEquals("shopping", tm.getCategory(), "shopping");
-    }
 
     @Test
-    public void testAddIncome() throws SQLException {
-        TransactionManager tm = new TransactionManager();
-        String dateString = "2024-10-02";
-        Date date = Date.valueOf(dateString);
+    public void addUserAccount() throws SQLException {
+        UserAccountManager userAccountManager = new UserAccountManager();
+        String birthday2String = "2009-12-14";
+        Date birthday2 = Date.valueOf(birthday2String);
+        String hashedPassword2 = BCrypt.hashpw("joh%14n%3342", BCrypt.gensalt(12));
 
-        tm.setType("Income");
-        tm.setAmount(4000);
-        tm.setSource("Salary");
-        tm.setDate(date);
+        UserAccount userAccount2 = new UserAccount("John", "Jane", "john", birthday2, hashedPassword2,
+                "john@yahoo.com");
 
-        assertEquals("Income", tm.getType(), "Income");
-        assertEquals(4000, tm.getAmount(), 4000);
-        assertEquals("Salary", tm.getSource(), "Salary");
+        userAccountManager.addAccount(userAccount2);
+
+        assertTrue(userAccountManager.verifyAccountByUsername("john"));
     }
-
-
 }

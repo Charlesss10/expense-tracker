@@ -1,26 +1,18 @@
 package com.charles;
 
 import java.sql.SQLException;
-import java.util.Scanner;
+import java.util.Date;
 
 //Filter by category
 public class CategoryFilter implements FilterStrategy {
-    private String category;
-    private final Database database = Database.getInstance();
-
     @Override
-    public void filter(String type) throws SQLException {
-        @SuppressWarnings("resource")
-        Scanner choice = new Scanner(System.in);
+    public void filter(double amountFilterStart, double amountFilterEnd, Date dateFilterStart,
+            Date dateFilterEnd,
+            String categoryFilter, String sourceFilter) throws SQLException {
+        TransactionManager transactionManager = new TransactionManager();
 
-        System.out.println("Enter Category: ");
-        category = choice.nextLine();
-
-        database.getFilteredTransactionCategory(type, this);
+        transactionManager.getRecentTransactions(amountFilterStart, amountFilterEnd, dateFilterStart, dateFilterEnd,
+                categoryFilter,
+                sourceFilter);
     }
-
-    String getCategory() {
-        return this.category;
-    }
-
 }

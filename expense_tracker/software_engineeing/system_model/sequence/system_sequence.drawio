@@ -1,6 +1,6 @@
 <mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/25.0.2 Chrome/128.0.6613.186 Electron/32.2.5 Safari/537.36" version="25.0.2">
   <diagram name="Seite-1" id="k2BTu3eVsBzlXVSyfBaP">
-    <mxGraphModel dx="1434" dy="884" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="765" dy="497" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -25,7 +25,7 @@
         <mxCell id="VvTMbsL79d3zG4dQRCYe-17" value="" style="html=1;points=[[0,0,0,0,5],[0,1,0,0,-5],[1,0,0,0,5],[1,1,0,0,-5]];perimeter=orthogonalPerimeter;outlineConnect=0;targetShapes=umlLifeline;portConstraint=eastwest;newEdgeStyle={&quot;curved&quot;:0,&quot;rounded&quot;:0};" parent="AW7PqRTQbmxWfaFKK7TU-3" vertex="1">
           <mxGeometry x="55" y="70" width="10" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="VvTMbsL79d3zG4dQRCYe-16" value="addUserAccount()" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;" parent="AW7PqRTQbmxWfaFKK7TU-3" edge="1">
+        <mxCell id="VvTMbsL79d3zG4dQRCYe-16" value="addAccount()" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;" parent="AW7PqRTQbmxWfaFKK7TU-3" edge="1">
           <mxGeometry x="0.0005" width="80" relative="1" as="geometry">
             <mxPoint x="-230" y="70" as="sourcePoint" />
             <mxPoint x="59.5" y="70" as="targetPoint" />
@@ -36,17 +36,6 @@
           <mxGeometry relative="1" as="geometry">
             <mxPoint x="60" y="130" as="sourcePoint" />
             <mxPoint x="-230" y="130" as="targetPoint" />
-            <mxPoint as="offset" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="VvTMbsL79d3zG4dQRCYe-32" value="addAccount()" style="html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;edgeStyle=orthogonalEdgeStyle;curved=0;rounded=0;" parent="AW7PqRTQbmxWfaFKK7TU-3" edge="1">
-          <mxGeometry x="0.0028" relative="1" as="geometry">
-            <mxPoint x="65" y="80" as="sourcePoint" />
-            <Array as="points">
-              <mxPoint x="95" y="79.75999999999999" />
-              <mxPoint x="95" y="109.75999999999999" />
-            </Array>
-            <mxPoint x="64.99999999999977" y="109.79448275862069" as="targetPoint" />
             <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
