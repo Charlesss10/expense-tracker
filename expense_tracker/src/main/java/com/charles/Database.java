@@ -87,58 +87,12 @@ public class Database {
 		return false;
 	}
 
-	// Get transaction in database
-	public Transaction getTransaction(String transactionId, String type) throws SQLException {
-		ResultSet incomeSelectQuery, expensesSelectQuery;
-		Transaction transaction = new Transaction();
-
-		if (verifyTransaction(transactionId, type)) {
-			switch (type) {
-				case "INCOME" -> {
-					incomeSelectQuery = stmt
-							.executeQuery("select * from income where transactionId = '" + transactionId + "'");
-					while (incomeSelectQuery.next()) {
-						transaction.setAccountId(incomeSelectQuery.getInt(1));
-						transaction.setTransactionId(incomeSelectQuery.getString(2));
-						transaction.setType(incomeSelectQuery.getString(3));
-						transaction.setAmount(incomeSelectQuery.getDouble(4));
-						transaction.setSource(incomeSelectQuery.getString(5));
-						transaction.setDescription(incomeSelectQuery.getString(6));
-						transaction.setDate(incomeSelectQuery.getDate(7));
-						transaction.setSystem_date(incomeSelectQuery.getTimestamp(8));
-					}
-					break;
-				}
-				case "EXPENSES" -> {
-					expensesSelectQuery = stmt
-							.executeQuery("select * from expenses where transactionId = '" + transactionId + "'");
-					while (expensesSelectQuery.next()) {
-						transaction.setAccountId(expensesSelectQuery.getInt(1));
-						transaction.setTransactionId(expensesSelectQuery.getString(2));
-						transaction.setType(expensesSelectQuery.getString(3));
-						transaction.setAmount(expensesSelectQuery.getDouble(4));
-						transaction.setCategory(expensesSelectQuery.getString(5));
-						transaction.setDescription(expensesSelectQuery.getString(6));
-						transaction.setDate(expensesSelectQuery.getDate(7));
-						transaction.setSystem_date(expensesSelectQuery.getTimestamp(8));
-					}
-					break;
-				}
-				default -> {
-					System.out.println("Invalid type: " + type);
-					return null;
-				}
-			}
-		}
-		return transaction;
-	}
-
 	// Fetch all transactions
-	public List<Transaction> fetchTransactions() throws SQLException {
+	public List<Transaction> fetchTransactions(int accountId) throws SQLException {
 		ResultSet incomeSelectQuery, expensesSelectQuery;
 		List<Transaction> transactions = new ArrayList<>();
 
-		incomeSelectQuery = stmt.executeQuery("select * from income");
+		incomeSelectQuery = stmt.executeQuery("select * from income where accountId = " + accountId);
 		while (incomeSelectQuery.next()) {
 			Transaction incomeTransaction = new Transaction();
 			incomeTransaction.setAccountId(incomeSelectQuery.getInt(1));
@@ -153,7 +107,7 @@ public class Database {
 		}
 		incomeSelectQuery.close();
 
-		expensesSelectQuery = stmt.executeQuery("select * from expenses");
+		expensesSelectQuery = stmt.executeQuery("select * from expenses where accountId = " + accountId);
 		while (expensesSelectQuery.next()) {
 			Transaction expensesTransaction = new Transaction();
 			expensesTransaction.setAccountId(expensesSelectQuery.getInt(1));
@@ -309,7 +263,7 @@ public class Database {
 		UserAccount userAccount = null;
 
 		if (verifyUserAccount(accountId)) {
-			accountSelectQuery = stmt.executeQuery("select * from userAccount where accountId = '" + accountId + "'");
+			accountSelectQuery = stmt.executeQuery("select * from userAccount where accountId = " + accountId);
 			while (accountSelectQuery.next()) {
 				accountId = accountSelectQuery.getInt(1);
 				String firstName = accountSelectQuery.getString(2);
@@ -380,16 +334,16 @@ public class Database {
 
 		if (verifyUserAccount(accountId)) {
 			stmt.executeUpdate(
-					"update userAccount set firstName = " + firstName + " where accountId = '" + accountId + "'");
+					"update userAccount set firstName = '" + firstName + "' where accountId = " + accountId);
 			stmt.executeUpdate(
-					"update userAccount set lastName = '" + lastName + "' where accountId = '" + accountId + "'");
+					"update userAccount set lastName = '" + lastName + "' where accountId = " + accountId);
 			stmt.executeUpdate(
-					"update userAccount set username = '" + username + "' where accountId = '" + accountId + "'");
+					"update userAccount set username = '" + username + "' where accountId = " + accountId);
 			stmt.executeUpdate(
-					"update userAccount set birthday = '" + birthday + "' where accountId = '" + accountId + "'");
+					"update userAccount set birthday = '" + birthday + "' where accountId = " + accountId);
 			stmt.executeUpdate(
-					"update userAccount set password = '" + password + "' where accountId = '" + accountId + "'");
-			stmt.executeUpdate("update userAccount set email = '" + email + "' where accountId = '" + accountId + "'");
+					"update userAccount set password = '" + password + "' where accountId = " + accountId);
+			stmt.executeUpdate("update userAccount set email = '" + email + "' where accountId = " + accountId);
 		}
 	}
 
@@ -406,6 +360,13 @@ public class Database {
 		if (verifyUserAccount(accountId)) {
 			stmt.executeUpdate(
 					"update userAccount set password = '" + password + "' where accountId = " + accountId);
+		}
+	}
+
+	public void insertSession(String sessionId, int accountId) throws SQLException {
+		if (verifyUserAccount(accountId)) {
+			stmt.executeUpdate(
+					"insert into sessions(sessionId, accountId) values ('" + sessionId + "'," + accountId + ")");
 		}
 	}
 }

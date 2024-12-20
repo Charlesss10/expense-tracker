@@ -25,6 +25,7 @@ public class AuthManager {
     private static final String TOKEN_FILE = "auth_token.txt";
     private static final String SECRET_KEY = "your_super_secure_and_long_secret_key_123!";
     private static final SecretKey SIGNING_KEY = new SecretKeySpec(SECRET_KEY.getBytes(), "HmacSHA256");
+    private final Database database = Database.getInstance();
 
     public AuthManager(UserAccountManager userAccountManager) throws SQLException {
         this.userAccountManager = userAccountManager;
@@ -89,13 +90,14 @@ public class AuthManager {
     public String generateSessionToken(int accountId) {
         return Jwts.builder()
                 .subject(String.valueOf(accountId))
-                .expiration(new Date(System.currentTimeMillis() + 3600000)) // 1-hour expiration
+                .expiration(new Date(System.currentTimeMillis() + 86400000)) // 24-hour expiration
                 .signWith(SIGNING_KEY)
                 .compact();
     }
 
-    public void saveSessionToken(String token) throws IOException {
+    public void saveSession(String token, String sessionId, int accountId) throws IOException, SQLException {
         Files.write(Paths.get(TOKEN_FILE), token.getBytes());
+        database.insertSession(sessionId, accountId);
     }
 
     public String validateSessionToken(String token) {
@@ -123,8 +125,9 @@ public class AuthManager {
         Files.deleteIfExists(Paths.get(TOKEN_FILE));
     }
 
-    public boolean logout() throws IOException {
+    public boolean logout() throws IOException, SQLException {
         terminateSession();
+        database.closeConnection();
         return false;
     }
 
@@ -154,5 +157,9 @@ public class AuthManager {
 
     public int getAccountId() {
         return this.accountId;
+    }
+
+    public void setAccountId(int accountId){
+        this.accountId = accountId;
     }
 }
