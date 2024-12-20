@@ -92,4 +92,9 @@ public class UserAccountManager {
     public List<UserAccount> getUserAccounts() throws SQLException {
         return this.userAccounts;
     }
+
+    // Fetch all user accounts from the database
+    public void fetchUserAccounts() throws SQLException {
+        this.userAccounts = database.fetchUserAccounts();
+    }
 }

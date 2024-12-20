@@ -46,43 +46,43 @@ public class Transaction {
 		this.transactionId = id;
 	}
 
-    public String getDescription() {
-        return this.description;
-    }
+	public String getDescription() {
+		return this.description;
+	}
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
+	public void setDescription(String description) {
+		this.description = description;
+	}
 
-    public String getCategory() {
-        return this.category;
-    }
+	public String getCategory() {
+		return this.category;
+	}
 
-    public void setCategory(String category) {
-        this.category = category;
-    }
+	public void setCategory(String category) {
+		this.category = category;
+	}
 
-    public String getSource() {
-        return this.source;
-    }
+	public String getSource() {
+		return this.source;
+	}
 
-    public void setSource(String source) {
-        this.source = source;
-    }
+	public void setSource(String source) {
+		this.source = source;
+	}
 
-    public int getAccountId() {
-        return accountId;
-    }
+	public int getAccountId() {
+		return accountId;
+	}
 
-    public void setAccountId(int accountId) {
-        this.accountId = accountId;
-    }
+	public void setAccountId(int accountId) {
+		this.accountId = accountId;
+	}
 
-    public Timestamp getSystem_date() {
-        return system_date;
-    }
+	public Timestamp getSystem_date() {
+		return system_date;
+	}
 
-    public void setSystem_date(Timestamp system_date) {
-        this.system_date = system_date;
-    }
+	public void setSystem_date(Timestamp system_date) {
+		this.system_date = system_date;
+	}
 }

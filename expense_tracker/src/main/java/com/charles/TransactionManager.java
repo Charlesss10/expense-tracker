@@ -7,12 +7,14 @@ import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class TransactionManager {
+public class TransactionManager implements Subject {
 	private List<Transaction> transactions = new ArrayList<>();
 	private final Database database = Database.getInstance();
+	private final List<Observer> observers = new ArrayList<>(); // List of observers
+	private final AuthManager authManager;
 
-	public TransactionManager() throws SQLException {
-		this.transactions = database.fetchTransactions();
+	public TransactionManager(AuthManager authManager) throws SQLException {
+		this.authManager = authManager;
 	}
 
 	// Add Transaction
@@ -32,6 +34,8 @@ public class TransactionManager {
 			}
 		}
 		System.out.println("\nTransaction Successful!\n");
+		fetchTransactions();
+		notifyObservers();
 	}
 
 	// Edit Transaction
@@ -58,6 +62,8 @@ public class TransactionManager {
 				}
 				database.updateTransaction(transaction);
 				System.out.println("Transaction modified successfully!\n");
+				fetchTransactions();
+				notifyObservers();
 				return true;
 			}
 		}
@@ -83,6 +89,8 @@ public class TransactionManager {
 				}
 				database.deleteTransaction(transaction);
 				System.out.println("Transaction deleted successfully!\n");
+				fetchTransactions();
+				notifyObservers();
 				break;
 			}
 		}
@@ -102,48 +110,54 @@ public class TransactionManager {
 
 	// Get and view transaction
 	public Transaction getTransaction(String transactionId, String type) throws SQLException {
-		Transaction transaction;
+		Transaction transaction = null;
 
 		if (database.verifyTransaction(transactionId, type)) {
-			transaction = database.getTransaction(transactionId, type);
-			switch (type) {
-				case "INCOME" -> {
-					System.out.println("\nINCOME TABLE:");
-					System.out.println("-------------");
-					System.out.format("%-52s %-20s %-20s %-20s %-20s %-20s%n",
-							"TRANSACTION ID", "TYPE", "AMOUNT", "SOURCE", "DESCRIPTION", "DATE");
-					System.out
-							.println(
-									"------------------------------------------------------------------------------------------------------------------");
-					System.out.format("%-52s %-20s %-20s %-20s %-20s %-20s%n",
-							transaction.getTransactionId(),
-							transaction.getType(),
-							transaction.getAmount(),
-							transaction.getSource(),
-							transaction.getDescription(),
-							transaction.getDate());
-					return transaction;
+			for (Transaction validTransaction : this.transactions) {
+				if (validTransaction.getTransactionId().equals(transactionId)) {
+					transaction = validTransaction;
 				}
-				case "EXPENSES" -> {
-					System.out.println("\nEXPENSES TABLE:");
-					System.out.println("---------------");
-					System.out.format("%-52s %-20s %-20s %-20s %-20s %-20s%n",
-							"TRANSACTION ID", "TYPE", "AMOUNT", "CATEGORY", "DESCRIPTION", "DATE");
-					System.out
-							.println(
-									"------------------------------------------------------------------------------------------------------------------");
-					System.out.format("%-52s %-20s %-20s %-20s %-20s %-20s%n",
-							transaction.getTransactionId(),
-							transaction.getType(),
-							transaction.getAmount(),
-							transaction.getCategory(),
-							transaction.getDescription(),
-							transaction.getDate());
-					return transaction;
-				}
-				default -> {
-					System.out.println("Invalid Type: " + transaction.getType());
-					return null;
+			}
+			if (transaction != null) {
+				switch (type) {
+					case "INCOME" -> {
+						System.out.println("\nINCOME TABLE:");
+						System.out.println("-------------");
+						System.out.format("%-40s %-12s %-20s %-33s %-50s %-20s%n",
+								"TRANSACTION ID", "TYPE", "AMOUNT", "SOURCE", "DESCRIPTION", "DATE");
+						System.out
+								.println(
+										"------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+						System.out.format("%-40s %-12s %-20s %-33s %-50s %-20s%n",
+								transaction.getTransactionId(),
+								transaction.getType(),
+								transaction.getAmount(),
+								transaction.getSource(),
+								transaction.getDescription(),
+								transaction.getDate());
+						return transaction;
+					}
+					case "EXPENSES" -> {
+						System.out.println("\nEXPENSES TABLE:");
+						System.out.println("---------------");
+						System.out.format("%-40s %-12s %-20s %-43s %-50s %-20s%n",
+								"TRANSACTION ID", "TYPE", "AMOUNT", "CATEGORY", "DESCRIPTION", "DATE");
+						System.out
+								.println(
+										"------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+						System.out.format("%-40s %-12s %-20s %-33s %-50s %-20s%n",
+								transaction.getTransactionId(),
+								transaction.getType(),
+								transaction.getAmount(),
+								transaction.getCategory(),
+								transaction.getDescription(),
+								transaction.getDate());
+						return transaction;
+					}
+					default -> {
+						System.out.println("Invalid Type: " + transaction.getType());
+						return null;
+					}
 				}
 			}
 		}
@@ -183,10 +197,7 @@ public class TransactionManager {
 	public void getRecentTransactions(double amountFilterStart, double amountFilterEnd, Date dateFilterStart,
 			Date dateFilterEnd,
 			String categoryFilter, String sourceFilter) throws SQLException {
-				System.out.println(dateFilterStart);
-				System.out.println(dateFilterEnd);
 
-			
 		List<Transaction> filteredTransactions = this.transactions.stream()
 				.filter(t -> (amountFilterStart == 0.0 && amountFilterEnd == 0.0 ||
 						(t.getAmount() >= amountFilterStart && t.getAmount() <= amountFilterEnd)) &&
@@ -217,14 +228,14 @@ public class TransactionManager {
 				if (!incomeHeaderPrinted) {
 					System.out.println("INCOME TABLE:");
 					System.out.println("-------------");
-					System.out.format("%-52s %-20s %-20s %-20s %-20s %-20s%n",
+					System.out.format("%-40s %-12s %-20s %-33s %-50s %-20s%n",
 							"TRANSACTION ID", "TYPE", "AMOUNT", "SOURCE", "DESCRIPTION", "DATE");
 					System.out
 							.println(
-									"---------------------------------------------------------------------------------------------------------------------------------------------------");
+									"------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
 					incomeHeaderPrinted = true;
 				}
-				System.out.format("%-52s %-20s %-20s %-20s %-20s %-20s%n",
+				System.out.format("%-40s %-12s %-20s %-33s %-50s %-20s%n",
 						transaction.getTransactionId(),
 						transaction.getType(),
 						transaction.getAmount(),
@@ -236,14 +247,14 @@ public class TransactionManager {
 				if (!expensesHeaderPrinted) {
 					System.out.println("\nEXPENSES TABLE:");
 					System.out.println("--------------");
-					System.out.format("%-52s %-20s %-20s %-20s %-20s %-20s%n",
+					System.out.format("%-40s %-12s %-20s %-43s %-50s %-20s%n",
 							"TRANSACTION ID", "TYPE", "AMOUNT", "CATEGORY", "DESCRIPTION", "DATE");
 					System.out
 							.println(
-									"---------------------------------------------------------------------------------------------------------------------------------------------------");
+									"------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
 					expensesHeaderPrinted = true;
 				}
-				System.out.format("%-52s %-20s %-20s %-20s %-20s %-20s%n",
+				System.out.format("%-40s %-12s %-20s %-43s %-50s %-20s%n",
 						transaction.getTransactionId(),
 						transaction.getType(),
 						transaction.getAmount(),
@@ -251,6 +262,28 @@ public class TransactionManager {
 						transaction.getDescription(),
 						transaction.getDate());
 			}
+		}
+	}
+
+	// Fetch all transactions from daabase
+	public void fetchTransactions() throws SQLException {
+		this.transactions = database.fetchTransactions(authManager.getAccountId());
+	}
+
+	@Override
+	public void registerObserver(Observer o) {
+		observers.add(o);
+	}
+
+	@Override
+	public void removeObserver(Observer o) {
+		observers.remove(o);
+	}
+
+	@Override
+	public void notifyObservers() {
+		for (Observer observer : this.observers) {
+			observer.update();
 		}
 	}
 }

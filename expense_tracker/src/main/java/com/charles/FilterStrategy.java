@@ -7,5 +7,5 @@ import java.util.Date;
 public interface FilterStrategy {
     public void filter(double amountFilterStart, double amountFilterEnd, Date dateFilterStart,
             Date dateFilterEnd,
-            String categoryFilter, String sourceFilter) throws SQLException;
+            String categoryFilter, String sourceFilter, TransactionManager transactionManager) throws SQLException;
 }
