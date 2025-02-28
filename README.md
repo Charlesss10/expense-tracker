@@ -14,6 +14,7 @@
 - Add, edit, and delete transaction: Users can manage individual transactions with full CRUD (Create, Read, Update, Delete) operations
 - View Total Balance: Get an instant summary of your account's financial status
 - View Recent Transactions with filter options (date, amount, source and category)
+- Data Storage: Users can import and export a bulk list of transactions
 
 ## Setup Instructions
 1. Clone the repository: 
