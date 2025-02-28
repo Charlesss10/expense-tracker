@@ -8,6 +8,7 @@ import java.time.Year;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.UUID;
@@ -22,11 +23,13 @@ public class Management implements UserInterface {
 	private final TransactionHistory transactionHistory;
 	private final ExpenseSummary expenseSummary;
 	private final ReportSummary reportSummary;
+	private final Settings settings;
+	private final DataStorage dataStorage;
 	Scanner choice = new Scanner(System.in);
 
 	public Management(UserAccountManager userAccountManager, AuthManager authManager,
 			TransactionManager transactionManager, TransactionHistory transactionHistory, ExpenseSummary expenseSummary,
-			ReportSummary reportSummary)
+			ReportSummary reportSummary, Settings settings, DataStorage dataStorage)
 			throws SQLException {
 		this.userAccountManager = userAccountManager;
 		this.authManager = authManager;
@@ -34,6 +37,8 @@ public class Management implements UserInterface {
 		this.transactionHistory = transactionHistory;
 		this.expenseSummary = expenseSummary;
 		this.reportSummary = reportSummary;
+		this.settings = settings;
+		this.dataStorage = dataStorage;
 	}
 
 	@Override
@@ -42,6 +47,7 @@ public class Management implements UserInterface {
 		String firstName;
 		String lastName;
 		String username;
+		String currencyChoice;
 		Date birthday = null;
 		String password;
 		String email = null;
@@ -81,6 +87,39 @@ public class Management implements UserInterface {
 					}
 				}
 
+				// Select currency
+				while (settings.getPreferredCurrency() == null) {
+					System.out.println("Select Currency");
+					System.out.println("---------------");
+
+					for (Map.Entry<String, String> currency : settings.getCurrencies().entrySet()) {
+						System.out.println(currency.getKey() + " - " + currency.getValue());
+					}
+					currencyChoice = choice.nextLine();
+
+					// Validate user input
+					while (!currencyChoice.equalsIgnoreCase("A") &&
+							!currencyChoice.equalsIgnoreCase("B")) {
+						System.out.println("Wrong option. Retry: ");
+						currencyChoice = choice.nextLine();
+					}
+					currencyChoice = currencyChoice.toUpperCase();
+
+					// Set currency
+					try {
+						settings.setCurrency(currencyChoice);
+					} catch (Exception e) {
+					}
+				}
+
+				do {
+					System.out.println("Email: ");
+					email = choice.nextLine();
+					if (!email.matches("^[\\w.%+-]+@[\\w.-]+\\.[a-zA-Z]{2,}$")) {
+						System.out.println("Invalid email type. Enter a valid email");
+					}
+				} while (!email.matches("^[\\w.%+-]+@[\\w.-]+\\.[a-zA-Z]{2,}$"));
+
 				do {
 					System.out.println("Password: ");
 					password = choice.nextLine();
@@ -91,15 +130,8 @@ public class Management implements UserInterface {
 				} while (password.length() < 5 || !password.matches(".*[0-9\\W].*"));
 				String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt(12));
 
-				do {
-					System.out.println("Email: ");
-					email = choice.nextLine();
-					if (!email.matches("^[\\w.%+-]+@[\\w.-]+\\.[a-zA-Z]{2,}$")) {
-						System.out.println("Invalid email type. Enter a valid email");
-					}
-				} while (!email.matches("^[\\w.%+-]+@[\\w.-]+\\.[a-zA-Z]{2,}$"));
-
-				userAccount = new UserAccount(firstName, lastName, username, birthday, hashedPassword, email);
+				userAccount = new UserAccount(firstName, lastName, username, birthday, hashedPassword, email,
+						settings.getPreferredCurrency());
 				userAccountManager.addAccount(userAccount);
 				return true;
 			}
@@ -238,6 +270,7 @@ public class Management implements UserInterface {
 					String accountId = authManager.validateSessionToken(token);
 					if (accountId != null) {
 						authManager.setAccountId(Integer.parseInt(accountId));
+						settings.setAccountCurrency();
 						System.out.println("Welcome back, user " + accountId + "!");
 						return true;
 					} else {
@@ -262,6 +295,8 @@ public class Management implements UserInterface {
 						// Set sessionId
 						String sessionId = UUID.randomUUID().toString();
 						authManager.saveSession(token, sessionId, accountId);
+						// Set currency
+						settings.setAccountCurrency();
 						System.out.println("Login successful.");
 						return true;
 					}
@@ -281,6 +316,7 @@ public class Management implements UserInterface {
 			case "RESET" -> {
 				String email;
 				String password;
+				int emailAttempts = 0;
 
 				System.out.println("Reset Password");
 				System.out.println("--------------");
@@ -288,18 +324,27 @@ public class Management implements UserInterface {
 				do {
 					System.out.println("Email: ");
 					email = choice.nextLine();
+					emailAttempts++;
+					if (emailAttempts == 3) {
+						break;
+					}
 					if (!email.matches("^[\\w.%+-]+@[\\w.-]+\\.[a-zA-Z]{2,}$")) {
 						System.out.println("Invalid email type. Enter a valid email");
 					}
 				} while (!email.matches("^[\\w.%+-]+@[\\w.-]+\\.[a-zA-Z]{2,}$"));
 
 				if (authManager.resetPassword(email)) {
+					int passwordAttempts = 0;
 					System.out.println("New Password");
 					System.out.println("------------");
 
 					do {
 						System.out.println("Password: ");
 						password = choice.nextLine();
+						passwordAttempts++;
+						if (passwordAttempts == 3) {
+							break;
+						}
 						if (password.length() < 5 || !password.matches(".*[0-9\\W].*")) {
 							System.out.println(
 									"Invalid password format. The password must be at least 5 characters long, contain both alphanumeric characters and at least one special character.");
@@ -307,7 +352,9 @@ public class Management implements UserInterface {
 					} while (password.length() < 5 || !password.matches(".*[0-9\\W].*"));
 					String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt(12));
 
-					return authManager.updateAccountPassword(email, hashedPassword);
+					if (password.length() > 5 || password.matches(".*[0-9\\W].*")) {
+						return authManager.updateAccountPassword(email, hashedPassword);
+					}
 				}
 				break;
 			}
@@ -317,6 +364,8 @@ public class Management implements UserInterface {
 				return false;
 			}
 		}
+		System.out.println("Password format Incorrect.");
+		System.out.println("You have been exited from the application.");
 		return false;
 	}
 
@@ -397,13 +446,6 @@ public class Management implements UserInterface {
 							int sourceId;
 							System.out.println("\nAdd Income");
 
-							// Set transactionId
-							String transactionId = UUID.randomUUID().toString();
-							transaction.setTransactionId(transactionId);
-
-							// Set type
-							transaction.setType("INCOME");
-
 							// Set amount
 							while (true) {
 								System.out.println("Transaction amount: ");
@@ -464,19 +506,13 @@ public class Management implements UserInterface {
 								}
 							}
 							transaction.setDate(date);
+							transactionManager.addTransaction(transaction, "INCOME", accountId);
 						}
 
 						case "B" -> {
 							// Add Expenses
 							int categoryId;
 							System.out.println("\nAdd Expenses");
-
-							// Set transactionId
-							String transactionId = UUID.randomUUID().toString();
-							transaction.setTransactionId(transactionId);
-
-							// Set type
-							transaction.setType("EXPENSES");
 
 							// Set amount
 							while (true) {
@@ -538,9 +574,9 @@ public class Management implements UserInterface {
 								}
 							}
 							transaction.setDate(date);
+							transactionManager.addTransaction(transaction, "EXPENSES", accountId);
 						}
 					}
-					transactionManager.addTransaction(transaction, accountId);
 					System.out.println("Would you like to enter another transaction? Y/N");
 					continueChoice = choice.nextLine();
 				} while (continueChoice.equalsIgnoreCase("Y"));
@@ -908,149 +944,150 @@ public class Management implements UserInterface {
 
 				System.out.println("\nRecent Transactions:\n");
 
-				transactionManager.getRecentTransactions(amountFilterStart, amountFilterEnd,
-						dateFilterStart, dateFilterEnd,
-						categoryFilter,
-						sourceFilter);
-				choice.nextLine();
+				if (transactionManager.getRecentTransactions(amountFilterStart, amountFilterEnd, dateFilterStart,
+						dateFilterEnd, categoryFilter, sourceFilter)) {
+					choice.nextLine();
 
-				// Option to filter transaction
-				System.out.println("Filter Transaction Y/N");
-				filterChoice = choice.nextLine();
+					// Option to filter transaction
+					System.out.println("Filter Transaction Y/N");
+					filterChoice = choice.nextLine();
 
-				if (!filterChoice.equalsIgnoreCase("Y")) {
-					break;
-				}
-
-				do {
-					// Reset filter criterias
-					amountFilterStart = 0.0;
-					amountFilterEnd = 0.0;
-					dateFilterStart = null;
-					dateFilterEnd = null;
-					categoryFilter = null;
-					sourceFilter = null;
-
-					System.out.println("Choose a filter criteria: ");
-					System.out.println("A - Amount");
-					System.out.println("B - Source");
-					System.out.println("C - Category");
-					System.out.println("D - Date");
-					filterCriteria = choice.nextLine();
-
-					// Validate user input
-					while (!filterCriteria.equalsIgnoreCase("A") &&
-							!filterCriteria.equalsIgnoreCase("B") &&
-							!filterCriteria.equalsIgnoreCase("C") &&
-							!filterCriteria.equalsIgnoreCase("D")) {
-						System.out.println("Wrong option. Retry: ");
-						filterCriteria = choice.nextLine();
+					if (!filterChoice.equalsIgnoreCase("Y")) {
+						break;
 					}
-					filterCriteria = filterCriteria.toUpperCase();
 
-					switch (filterCriteria) {
-						case "A" -> {
-							FilterStrategy filterStrategy = new AmountFilter();
-							while (true) {
-								System.out.println("Start amount: ");
-								try {
-									amountFilterStart = choice.nextDouble();
-									if (amountFilterStart < 0) {
-										System.out.println("Invalid input. Please enter a positive value.");
-									} else {
-										break;
+					do {
+						// Reset filter criterias
+						amountFilterStart = 0.0;
+						amountFilterEnd = 0.0;
+						dateFilterStart = null;
+						dateFilterEnd = null;
+						categoryFilter = null;
+						sourceFilter = null;
+
+						System.out.println("Choose a filter criteria: ");
+						System.out.println("A - Amount");
+						System.out.println("B - Source");
+						System.out.println("C - Category");
+						System.out.println("D - Date");
+						filterCriteria = choice.nextLine();
+
+						// Validate user input
+						while (!filterCriteria.equalsIgnoreCase("A") &&
+								!filterCriteria.equalsIgnoreCase("B") &&
+								!filterCriteria.equalsIgnoreCase("C") &&
+								!filterCriteria.equalsIgnoreCase("D")) {
+							System.out.println("Wrong option. Retry: ");
+							filterCriteria = choice.nextLine();
+						}
+						filterCriteria = filterCriteria.toUpperCase();
+
+						switch (filterCriteria) {
+							case "A" -> {
+								FilterStrategy filterStrategy = new AmountFilter();
+								while (true) {
+									System.out.println("Start amount: ");
+									try {
+										amountFilterStart = choice.nextDouble();
+										if (amountFilterStart < 0) {
+											System.out.println("Invalid input. Please enter a positive value.");
+										} else {
+											break;
+										}
+									} catch (Exception e) {
+										System.out.println("Invalid input. Please enter a valid start amount.");
+										choice.nextLine();
 									}
-								} catch (Exception e) {
-									System.out.println("Invalid input. Please enter a valid start amount.");
-									choice.nextLine();
 								}
-							}
-							choice.nextLine();
+								choice.nextLine();
 
-							while (true) {
-								System.out.println("End amount: ");
-								try {
-									amountFilterEnd = choice.nextDouble();
-									if (amountFilterEnd < 0) {
-										System.out.println("Invalid input. Please enter a positive value.");
-									} else {
-										break;
+								while (true) {
+									System.out.println("End amount: ");
+									try {
+										amountFilterEnd = choice.nextDouble();
+										if (amountFilterEnd < 0) {
+											System.out.println("Invalid input. Please enter a positive value.");
+										} else {
+											break;
+										}
+									} catch (Exception e) {
+										System.out.println("Invalid input. Please enter a valid end amount.");
+										choice.nextLine();
 									}
-								} catch (Exception e) {
-									System.out.println("Invalid input. Please enter a valid end amount.");
-									choice.nextLine();
 								}
-							}
-							choice.nextLine();
+								choice.nextLine();
 
-							if (amountFilterEnd < amountFilterStart) {
-								double correctedAmount = amountFilterStart;
-								amountFilterStart = amountFilterEnd;
-								amountFilterEnd = correctedAmount;
-							}
-							System.out.println("Start Amount" + amountFilterStart);
-							System.out.println("End Amount" + amountFilterEnd);
-
-							filterStrategy.filter(amountFilterStart, amountFilterEnd, dateFilterStart,
-									dateFilterEnd, categoryFilter, sourceFilter, transactionManager);
-							break;
-						}
-
-						case "B" -> {
-							FilterStrategy filterStrategy = new SourceFilter();
-							System.out.println("Enter Source: ");
-							sourceFilter = choice.nextLine();
-							filterStrategy.filter(amountFilterStart, amountFilterEnd, dateFilterStart,
-									dateFilterEnd, categoryFilter, sourceFilter, transactionManager);
-							break;
-						}
-
-						case "C" -> {
-							FilterStrategy filterStrategy = new CategoryFilter();
-							System.out.println("Enter Category: ");
-							categoryFilter = choice.nextLine();
-							filterStrategy.filter(amountFilterStart, amountFilterEnd, dateFilterStart, dateFilterEnd,
-									categoryFilter, sourceFilter, transactionManager);
-							break;
-						}
-						case "D" -> {
-							FilterStrategy filterStrategy = new DateFilter();
-							while (true) {
-								System.out.println("Start date(YYYY-MM-DD): ");
-								try {
-									String dateInput = choice.nextLine();
-									dateFilterStart = Date.valueOf(dateInput);
-									break;
-								} catch (Exception e) {
-									System.out.println("Invalid input. Please enter a valid start date.");
+								if (amountFilterEnd < amountFilterStart) {
+									double correctedAmount = amountFilterStart;
+									amountFilterStart = amountFilterEnd;
+									amountFilterEnd = correctedAmount;
 								}
-							}
-							while (true) {
-								System.out.println("End date(YYYY-MM-DD): ");
-								try {
-									String dateInput = choice.nextLine();
-									dateFilterEnd = Date.valueOf(dateInput);
-									break;
-								} catch (Exception e) {
-									System.out.println("Invalid input. Please enter a valid end date.");
-								}
-							}
-							if (dateFilterStart != null && dateFilterEnd != null) {
-								if (dateFilterStart.compareTo(dateFilterEnd) >= 0) {
-									Date temp = dateFilterStart;
-									dateFilterStart = dateFilterEnd;
-									dateFilterEnd = temp;
-								}
+								System.out.println("Start Amount" + amountFilterStart);
+								System.out.println("End Amount" + amountFilterEnd);
+
 								filterStrategy.filter(amountFilterStart, amountFilterEnd, dateFilterStart,
 										dateFilterEnd, categoryFilter, sourceFilter, transactionManager);
+								break;
 							}
-							break;
+
+							case "B" -> {
+								FilterStrategy filterStrategy = new SourceFilter();
+								System.out.println("Enter Source: ");
+								sourceFilter = choice.nextLine();
+								filterStrategy.filter(amountFilterStart, amountFilterEnd, dateFilterStart,
+										dateFilterEnd, categoryFilter, sourceFilter, transactionManager);
+								break;
+							}
+
+							case "C" -> {
+								FilterStrategy filterStrategy = new CategoryFilter();
+								System.out.println("Enter Category: ");
+								categoryFilter = choice.nextLine();
+								filterStrategy.filter(amountFilterStart, amountFilterEnd, dateFilterStart,
+										dateFilterEnd,
+										categoryFilter, sourceFilter, transactionManager);
+								break;
+							}
+							case "D" -> {
+								FilterStrategy filterStrategy = new DateFilter();
+								while (true) {
+									System.out.println("Start date(YYYY-MM-DD): ");
+									try {
+										String dateInput = choice.nextLine();
+										dateFilterStart = Date.valueOf(dateInput);
+										break;
+									} catch (Exception e) {
+										System.out.println("Invalid input. Please enter a valid start date.");
+									}
+								}
+								while (true) {
+									System.out.println("End date(YYYY-MM-DD): ");
+									try {
+										String dateInput = choice.nextLine();
+										dateFilterEnd = Date.valueOf(dateInput);
+										break;
+									} catch (Exception e) {
+										System.out.println("Invalid input. Please enter a valid end date.");
+									}
+								}
+								if (dateFilterStart != null && dateFilterEnd != null) {
+									if (dateFilterStart.compareTo(dateFilterEnd) >= 0) {
+										Date temp = dateFilterStart;
+										dateFilterStart = dateFilterEnd;
+										dateFilterEnd = temp;
+									}
+									filterStrategy.filter(amountFilterStart, amountFilterEnd, dateFilterStart,
+											dateFilterEnd, categoryFilter, sourceFilter, transactionManager);
+								}
+								break;
+							}
 						}
-					}
-					choice.nextLine();
-					System.out.println("Would you like to filter based on another criteria Y/N: ");
-					continueFilterChoice = choice.nextLine();
-				} while (continueFilterChoice.equalsIgnoreCase("Y"));
+						choice.nextLine();
+						System.out.println("Would you like to filter based on another criteria Y/N: ");
+						continueFilterChoice = choice.nextLine();
+					} while (continueFilterChoice.equalsIgnoreCase("Y"));
+				}
+				choice.nextLine();
 				break;
 			}
 
@@ -1069,7 +1106,6 @@ public class Management implements UserInterface {
 				choice.nextLine();
 				break;
 			}
-			default -> System.out.println("Invalid Prompt.");
 		}
 	}
 
@@ -1175,8 +1211,64 @@ public class Management implements UserInterface {
 	}
 
 	@Override
+	public void settings() {
+		System.out.println("Currency: " + settings.getPreferredCurrency());
+
+		System.out.println("Press any key to continue to the main menu.");
+		choice.nextLine();
+	}
+
+	@Override
+	public void dataStorage() {
+		String dataChoice;
+		System.out.println("A. Save Data");
+		System.out.println("B. Load Data");
+		dataChoice = choice.nextLine();
+
+		// Validate user input
+		while (!dataChoice.equalsIgnoreCase("A") &&
+				!dataChoice.equalsIgnoreCase("B")) {
+			System.out.println("Wrong option. Retry: ");
+			dataChoice = choice.nextLine();
+		}
+		dataChoice = dataChoice.toUpperCase();
+
+		switch (dataChoice) {
+			case "A" -> {
+				try {
+					try {
+						dataStorage.saveData();
+					} catch (SQLException ex) {
+					}
+				} catch (IOException e) {
+				}
+
+				break;
+			}
+			case "B" -> {
+				try {
+					List<Transaction> transactions = dataStorage.loadData("transactions.csv");
+					if (transactions != null) {
+						for (Transaction transaction : transactions) {
+							try {
+								transactionManager.addTransaction(transaction, transaction.getType(),
+										authManager.getAccountId());
+								System.out.println("Added Transactions");
+							} catch (ClassNotFoundException | SQLException ex) {
+							}
+						}
+					}
+				} catch (IOException e) {
+				}
+				break;
+			}
+		}
+	}
+
+	@Override
 	public void run() throws ClassNotFoundException, SQLException, IOException {
 		String entryChoice;
+		int choiceAttempts = 0;
 		System.out.println("A - Login");
 		System.out.println("B - Forgot Password");
 		System.out.println("C - Create Account");
@@ -1186,6 +1278,10 @@ public class Management implements UserInterface {
 		while (!entryChoice.equalsIgnoreCase("A") &&
 				!entryChoice.equalsIgnoreCase("B") &&
 				!entryChoice.equalsIgnoreCase("C")) {
+			choiceAttempts++;
+			if (choiceAttempts == 3) {
+				break;
+			}
 			System.out.println("Wrong option. Retry: ");
 			entryChoice = choice.nextLine();
 		}
@@ -1210,7 +1306,6 @@ public class Management implements UserInterface {
 				}
 				break;
 			}
-			default -> System.out.println("Wrong Option!");
 		}
 	}
 
@@ -1227,6 +1322,7 @@ public class Management implements UserInterface {
 			while (login) {
 				// Main Page
 				String mainMenuChoice;
+				int choiceAttempts = 0;
 
 				System.out.println("Expense-Tracker");
 				System.out.println("---------------");
@@ -1248,6 +1344,10 @@ public class Management implements UserInterface {
 						!mainMenuChoice.equalsIgnoreCase("E") &&
 						!mainMenuChoice.equalsIgnoreCase("F") &&
 						!mainMenuChoice.equalsIgnoreCase("G")) {
+					choiceAttempts++;
+					if (choiceAttempts == 3) {
+						break;
+					}
 					System.out.println("Wrong option. Retry: ");
 					mainMenuChoice = choice.nextLine();
 				}
@@ -1274,6 +1374,7 @@ public class Management implements UserInterface {
 						System.out.println("F - View Transaction History");
 						transactionManagerChoice = choice.nextLine();
 
+						choiceAttempts = 0;
 						// Validate user input
 						while (!transactionManagerChoice.equalsIgnoreCase("A") &&
 								!transactionManagerChoice.equalsIgnoreCase("B") &&
@@ -1281,6 +1382,10 @@ public class Management implements UserInterface {
 								!transactionManagerChoice.equalsIgnoreCase("D") &&
 								!transactionManagerChoice.equalsIgnoreCase("E") &&
 								!transactionManagerChoice.equalsIgnoreCase("F")) {
+							choiceAttempts++;
+							if (choiceAttempts == 3) {
+								break;
+							}
 							System.out.println("Wrong option. Retry: ");
 							transactionManagerChoice = choice.nextLine();
 						}
@@ -1317,7 +1422,6 @@ public class Management implements UserInterface {
 								break;
 							}
 						}
-
 						break;
 					}
 
@@ -1327,6 +1431,7 @@ public class Management implements UserInterface {
 					}
 
 					case "D" -> {
+						dataStorage();
 						break;
 					}
 
@@ -1336,6 +1441,7 @@ public class Management implements UserInterface {
 					}
 
 					case "F" -> {
+						settings();
 						break;
 					}
 
@@ -1345,7 +1451,10 @@ public class Management implements UserInterface {
 						break;
 					}
 
-					default -> System.out.println("Invalid Choice.");
+					default -> {
+						login = authManager("LOGOUT");
+						System.out.println("You have been logged out.");
+					}
 				}
 			}
 		}

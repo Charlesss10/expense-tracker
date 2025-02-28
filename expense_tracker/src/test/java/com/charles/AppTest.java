@@ -20,7 +20,7 @@ public class AppTest {
         String hashedPassword2 = BCrypt.hashpw("joh%14n%3342", BCrypt.gensalt(12));
 
         UserAccount userAccount2 = new UserAccount("John", "Jane", "john", birthday2, hashedPassword2,
-                "john@yahoo.com");
+                "john@yahoo.com", "Euro");
 
         userAccountManager.addAccount(userAccount2);
 

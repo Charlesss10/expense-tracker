@@ -7,18 +7,20 @@ public class UserAccount {
     private String lastName;
     private String username;
     private Date birthday;
+    private String currency;
     private String password;
     private String email;
     private int accountId;
 
     public UserAccount(String firstName, String lastName, String username, Date birthday, String password,
-            String email) {
+            String email, String currency) {
         this.firstName = firstName;
         this.lastName = lastName;
         this.username = username;
         this.birthday = birthday;
         this.password = password;
         this.email = email;
+        this.currency = currency;
     }
 
     public String getFirstName() {
@@ -75,5 +77,13 @@ public class UserAccount {
 
     public void setAccountId(int accountId) {
         this.accountId = accountId;
+    }
+
+    public String getCurrency() {
+        return this.currency;
+    }
+
+    public void setCurrency(String currency) {
+        this.currency = currency;
     }
 }

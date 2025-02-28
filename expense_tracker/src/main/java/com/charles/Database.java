@@ -270,9 +270,10 @@ public class Database {
 				String lastName = accountSelectQuery.getString(3);
 				String username = accountSelectQuery.getString(4);
 				Date birthday = accountSelectQuery.getDate(5);
-				String password = accountSelectQuery.getString(6);
-				String email = accountSelectQuery.getString(7);
-				userAccount = new UserAccount(firstName, lastName, username, birthday, password, email);
+				String currency = accountSelectQuery.getString(6);
+				String password = accountSelectQuery.getString(7);
+				String email = accountSelectQuery.getString(8);
+				userAccount = new UserAccount(firstName, lastName, username, birthday, password, email, currency);
 				userAccount.setAccountId(accountId);
 			}
 		}
@@ -294,9 +295,10 @@ public class Database {
 			String lastName = accountSelectQuery.getString(3);
 			String username = accountSelectQuery.getString(4);
 			Date birthday = accountSelectQuery.getDate(5);
-			String password = accountSelectQuery.getString(6);
-			String email = accountSelectQuery.getString(7);
-			UserAccount userAccount = new UserAccount(firstName, lastName, username, birthday, password, email);
+			String currency = accountSelectQuery.getString(6);
+			String password = accountSelectQuery.getString(7);
+			String email = accountSelectQuery.getString(8);
+			UserAccount userAccount = new UserAccount(firstName, lastName, username, birthday, password, email, currency);
 			userAccounts.add(userAccount);
 			userAccount.setAccountId(accountId);
 		}
@@ -313,11 +315,12 @@ public class Database {
 		Date birthday = userAccount.getBirthday();
 		String password = userAccount.getPassword();
 		String email = userAccount.getEmail();
+		String currency = userAccount.getCurrency();
 
 		stmt.executeUpdate(
-				"insert into userAccount(firstName, lastName, username, birthday, password, email) values ('"
+				"insert into userAccount(firstName, lastName, username, birthday, currency, password, email) values ('"
 						+ firstName + "','" + lastName + "','" + username + "','" + birthday
-						+ "','"
+						+ "','" + currency + "','"
 						+ password + "','" + email + "')");
 		System.out.println("Account added Successfully!\n");
 	}

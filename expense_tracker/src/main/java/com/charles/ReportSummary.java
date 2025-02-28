@@ -20,8 +20,8 @@ public class ReportSummary extends TransactionList {
     private Map<String, String> expensesByCategory = new HashMap<>();
     private Map<String, String> incomeBySource = new HashMap<>();
 
-    public ReportSummary(AuthManager authManager) throws SQLException {
-        super(authManager);
+    public ReportSummary(AuthManager authManager, Settings settings) throws SQLException {
+        super(authManager, settings);
     }
 
     public boolean generateReportSummary(String targetMonth, String targetYear) throws SQLException {
@@ -66,9 +66,9 @@ public class ReportSummary extends TransactionList {
             }
 
             System.out.println("Report Summary\n");
-            System.out.println("Total Income: " + this.totalIncome);
-            System.out.println("Total Expenses: " + this.totalExpenses);
-            System.out.println("Total Balance: " + this.totalBalance);
+            System.out.println("Total Income: " + this.totalIncome + " " + settings.getPreferredCurrency());
+            System.out.println("Total Expenses: " + this.totalExpenses + " " + settings.getPreferredCurrency());
+            System.out.println("Total Balance: " + this.totalBalance + " " + settings.getPreferredCurrency());
             System.out.println("Highest Source: " + this.highestSource);
             System.out.println("Highest Category: " + this.highestCategory);
 
