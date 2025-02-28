@@ -11,8 +11,8 @@ public class ExpenseSummary extends TransactionList {
     private Map<String, String> expensesPercentage = new HashMap<>();
     private Map<String, String> expensesByCategory = new HashMap<>();
 
-    public ExpenseSummary(AuthManager authManager) throws SQLException {
-        super(authManager);
+    public ExpenseSummary(AuthManager authManager, Settings settings) throws SQLException {
+        super(authManager, settings);
     }
 
     public void categorizeExpenses() {
@@ -55,7 +55,7 @@ public class ExpenseSummary extends TransactionList {
 
         this.expensesCalculator();
         this.categorizeExpenses();
-        System.out.println("Total Expenses: " + this.totalExpenses);
+        System.out.println("Total Expenses: " + this.totalExpenses + " " + settings.getPreferredCurrency());
         System.out.println("\nHighest Category: " + this.highestCategory);
 
         System.out.println("\nExpenses Percentage:");
@@ -67,7 +67,7 @@ public class ExpenseSummary extends TransactionList {
         System.out.println("\nExpenses by Category:");
         System.out.println("---------------------");
         for (Map.Entry<String, String> entry : this.expensesByCategory.entrySet()) {
-            System.out.println(entry.getKey() + " - " + entry.getValue());
+            System.out.println(entry.getKey() + " - " + entry.getValue() + " " + settings.getPreferredCurrency());
         }
     }
 

@@ -1,5 +1,5 @@
-create schema expense_tracker;
-use expense_tracker;
+-- create schema expense_tracker;
+-- use expense_tracker;
 
 -- create user account table
 drop table if exists userAccount;
@@ -9,6 +9,7 @@ firstName char(20) not null,
 lastName char(20) not null,
 username char(20) unique not null,
 birthday Date not null,
+currency char(10) not null,
 password varchar(100) not null,
 email char(50) unique not null,
 system_date datetime default current_timestamp not null

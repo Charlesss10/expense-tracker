@@ -5,6 +5,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class TransactionManager implements Subject {
@@ -12,14 +13,23 @@ public class TransactionManager implements Subject {
 	private final Database database = Database.getInstance();
 	private final List<Observer> observers = new ArrayList<>(); // List of observers
 	private final AuthManager authManager;
+	private final Settings settings;
 
-	public TransactionManager(AuthManager authManager) throws SQLException {
+	public TransactionManager(AuthManager authManager, Settings settings) throws SQLException {
 		this.authManager = authManager;
+		this.settings = settings;
 	}
 
 	// Add Transaction
-	public void addTransaction(Transaction transaction, int accountId)
+	public void addTransaction(Transaction transaction, String type, int accountId)
 			throws ClassNotFoundException, SQLException, IOException {
+		// Set type
+		transaction.setType(type);
+
+		// Set transactionId
+		String transactionId = UUID.randomUUID().toString();
+		transaction.setTransactionId(transactionId);
+
 		// Add Transaction into the database
 		switch (transaction.getType()) {
 			case "INCOME" -> {
@@ -123,12 +133,13 @@ public class TransactionManager implements Subject {
 					case "INCOME" -> {
 						System.out.println("\nINCOME TABLE:");
 						System.out.println("-------------");
-						System.out.format("%-40s %-12s %-20s %-33s %-50s %-20s%n",
-								"TRANSACTION ID", "TYPE", "AMOUNT", "SOURCE", "DESCRIPTION", "DATE");
+						System.out.format("%-40s %-12s %-31s %-33s %-50s %-20s%n",
+								"TRANSACTION ID", "TYPE", "AMOUNT (" + settings.getPreferredCurrency() + ")", "SOURCE",
+								"DESCRIPTION", "DATE");
 						System.out
 								.println(
-										"------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
-						System.out.format("%-40s %-12s %-20s %-33s %-50s %-20s%n",
+										"-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+						System.out.format("%-40s %-12s %-31s %-33s %-50s %-20s%n",
 								transaction.getTransactionId(),
 								transaction.getType(),
 								transaction.getAmount(),
@@ -140,12 +151,13 @@ public class TransactionManager implements Subject {
 					case "EXPENSES" -> {
 						System.out.println("\nEXPENSES TABLE:");
 						System.out.println("---------------");
-						System.out.format("%-40s %-12s %-20s %-43s %-50s %-20s%n",
-								"TRANSACTION ID", "TYPE", "AMOUNT", "CATEGORY", "DESCRIPTION", "DATE");
+						System.out.format("%-40s %-12s %-31s %-43s %-50s %-20s%n",
+								"TRANSACTION ID", "TYPE", "AMOUNT (" + settings.getPreferredCurrency() + ")",
+								"CATEGORY", "DESCRIPTION", "DATE");
 						System.out
 								.println(
-										"------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
-						System.out.format("%-40s %-12s %-20s %-33s %-50s %-20s%n",
+										"-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+						System.out.format("%-40s %-12s %-31s %-33s %-50s %-20s%n",
 								transaction.getTransactionId(),
 								transaction.getType(),
 								transaction.getAmount(),
@@ -162,6 +174,11 @@ public class TransactionManager implements Subject {
 			}
 		}
 		return null;
+	}
+
+	// Get all transactions
+	public List<Transaction> getTransactions() {
+		return this.transactions;
 	}
 
 	// Display total balance
@@ -188,13 +205,13 @@ public class TransactionManager implements Subject {
 		}
 		totalBalance = totalIncome - totalExpenses;
 
-		System.out.println("Total Balance: " + totalBalance);
-		System.out.println("Total Income: " + totalIncome);
-		System.out.println("Total Expenses: " + totalExpenses);
+		System.out.println("Total Balance: " + totalBalance + " " + settings.getPreferredCurrency());
+		System.out.println("Total Income: " + totalIncome + " " + settings.getPreferredCurrency());
+		System.out.println("Total Expenses: " + totalExpenses + " " + settings.getPreferredCurrency());
 	}
 
 	// Display Recent Trasactions with filtering functionalities
-	public void getRecentTransactions(double amountFilterStart, double amountFilterEnd, Date dateFilterStart,
+	public boolean getRecentTransactions(double amountFilterStart, double amountFilterEnd, Date dateFilterStart,
 			Date dateFilterEnd,
 			String categoryFilter, String sourceFilter) throws SQLException {
 
@@ -217,7 +234,7 @@ public class TransactionManager implements Subject {
 
 		if (filteredTransactions.isEmpty()) {
 			System.out.println("No transactions found.");
-			return;
+			return false;
 		}
 
 		boolean incomeHeaderPrinted = false;
@@ -228,14 +245,15 @@ public class TransactionManager implements Subject {
 				if (!incomeHeaderPrinted) {
 					System.out.println("INCOME TABLE:");
 					System.out.println("-------------");
-					System.out.format("%-40s %-12s %-20s %-33s %-50s %-20s%n",
-							"TRANSACTION ID", "TYPE", "AMOUNT", "SOURCE", "DESCRIPTION", "DATE");
+					System.out.format("%-40s %-12s %-31s %-33s %-50s %-20s%n",
+							"TRANSACTION ID", "TYPE", "AMOUNT (" + settings.getPreferredCurrency() + ")", "SOURCE",
+							"DESCRIPTION", "DATE");
 					System.out
 							.println(
-									"------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+									"-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
 					incomeHeaderPrinted = true;
 				}
-				System.out.format("%-40s %-12s %-20s %-33s %-50s %-20s%n",
+				System.out.format("%-40s %-12s %-31s %-33s %-50s %-20s%n",
 						transaction.getTransactionId(),
 						transaction.getType(),
 						transaction.getAmount(),
@@ -247,14 +265,15 @@ public class TransactionManager implements Subject {
 				if (!expensesHeaderPrinted) {
 					System.out.println("\nEXPENSES TABLE:");
 					System.out.println("--------------");
-					System.out.format("%-40s %-12s %-20s %-43s %-50s %-20s%n",
-							"TRANSACTION ID", "TYPE", "AMOUNT", "CATEGORY", "DESCRIPTION", "DATE");
+					System.out.format("%-40s %-12s %-31s %-43s %-50s %-20s%n",
+							"TRANSACTION ID", "TYPE", "AMOUNT (" + settings.getPreferredCurrency() + ")", "CATEGORY",
+							"DESCRIPTION", "DATE");
 					System.out
 							.println(
-									"------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
+									"-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------");
 					expensesHeaderPrinted = true;
 				}
-				System.out.format("%-40s %-12s %-20s %-43s %-50s %-20s%n",
+				System.out.format("%-40s %-12s %-31s %-43s %-50s %-20s%n",
 						transaction.getTransactionId(),
 						transaction.getType(),
 						transaction.getAmount(),
@@ -263,6 +282,7 @@ public class TransactionManager implements Subject {
 						transaction.getDate());
 			}
 		}
+		return true;
 	}
 
 	// Fetch all transactions from daabase

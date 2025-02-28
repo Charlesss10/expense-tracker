@@ -4,15 +4,15 @@ import java.sql.Date;
 import java.sql.Timestamp;
 
 public class Transaction {
-	private int accountId;
-	private String transactionId;
-	private String type;
-	private double amount;
-	private String source;
-	private String category;
-	private String description;
-	private Date date;
-	private Timestamp system_date;
+	private int accountId = 0;
+	private String transactionId = " ";
+	private String type = " ";
+	private double amount = 0.0;
+	private String source = " ";
+	private String category = " ";
+	private String description = " ";
+	private Date date = null;
+	private Timestamp system_date = null;
 
 	public String getType() {
 		return this.type;

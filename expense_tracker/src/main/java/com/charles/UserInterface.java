@@ -8,8 +8,11 @@ public interface UserInterface {
 
 	public boolean authManager(String authManagerPrompt) throws SQLException, IOException;
 
-	public void transactionManager(String transactionManagerPrompt)
-			throws ClassNotFoundException, SQLException, IOException;
+	public void transactionManager(String transactionManagerPrompt) throws ClassNotFoundException, SQLException, IOException;
+
+	public void settings();
+
+	public void dataStorage();
 
 	public void run() throws ClassNotFoundException, SQLException, IOException;
 }

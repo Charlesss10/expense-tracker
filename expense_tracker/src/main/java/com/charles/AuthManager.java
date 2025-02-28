@@ -38,7 +38,7 @@ public class AuthManager {
         for (UserAccount userAccount : this.userAccounts) {
             if (userAccount.getUsername().equals(username)) {
                 if (BCrypt.checkpw(password, userAccount.getPassword())) {
-                    this.getAccountInfo(userAccount.getAccountId(), userAccount.getEmail());
+                    this.setAccountInfo(userAccount.getAccountId(), userAccount.getEmail());
                     return true;
                 } else {
                     System.out.println("Password mismatch.");
@@ -55,7 +55,7 @@ public class AuthManager {
         this.userAccounts = userAccountManager.getUserAccounts();
     }
 
-    public void getAccountInfo(int accountId, String email) {
+    public void setAccountInfo(int accountId, String email) {
         this.accountId = accountId;
         this.email = email;
     }

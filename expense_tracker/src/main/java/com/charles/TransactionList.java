@@ -8,9 +8,11 @@ public abstract class TransactionList implements Observer {
     protected List<Transaction> totalTransactions = new ArrayList<>();
     protected final Database database = Database.getInstance();
     protected AuthManager authManager;
+    protected Settings settings;
 
-    public TransactionList(AuthManager authManager) throws SQLException {
+    public TransactionList(AuthManager authManager, Settings settings) throws SQLException {
         this.authManager = authManager;
+        this.settings = settings;
     }
 
     public void fetchTransactions() throws SQLException {
